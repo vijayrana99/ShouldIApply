@@ -1,0 +1,129 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #6b7280;
+  --border: #d1d5db;
+  --accent: #2563eb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--fg);
+  background: #f3f4f6;
+  margin: 0;
+  padding: 24px;
+}
+
+.settings {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 24px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.privacy-note,
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.privacy-note {
+  margin-top: 0;
+}
+
+.hint {
+  display: block;
+  margin-top: 4px;
+}
+
+.field {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.field > span {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+.field input[type="text"],
+.field input[type="password"],
+.field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.field input[type="file"] {
+  font: inherit;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-field input[type="checkbox"] {
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.cv-privacy {
+  display: block;
+  margin: -8px 0 16px;
+  padding: 8px 10px;
+  border-left: 3px solid #f59e0b;
+  background: #fffbeb;
+  color: #78350f;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#save-btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#save-btn:hover {
+  background: #1d4ed8;
+}
+
+.saved {
+  color: #15803d;
+}
+
+a {
+  color: var(--accent);
+}

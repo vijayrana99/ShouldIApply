@@ -698,3 +698,22 @@ h3 {
   font-weight: 700;
   color: var(--muted);
 }
+
+.cv-onboard {
+  margin: 6px 0 8px;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+
+.cv-onboard-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--fg);
+  margin-bottom: 6px;
+}
+
+.cv-onboard button.primary {
+  margin-top: 8px;
+}

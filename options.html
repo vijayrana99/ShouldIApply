@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ShouldIApply — Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <form id="settings-form" class="settings">
+      <h1>ShouldIApply Settings</h1>
+
+      <p class="privacy-note">
+        Your API key and CV are stored locally in this browser's extension
+        storage and are not synced to other devices. The model choice syncs if
+        Chrome Sync is enabled.
+      </p>
+
+      <label class="field">
+        <span>OpenRouter API key</span>
+        <input
+          id="api-key"
+          type="password"
+          placeholder="sk-or-…"
+          autocomplete="off"
+        />
+      </label>
+
+      <label class="field">
+        <span>Model</span>
+        <input id="model" type="text" placeholder="deepseek/deepseek-v4-flash-0731" />
+        <small class="hint">
+          Use any model slug from
+          <a href="https://openrouter.ai/models" target="_blank" rel="noreferrer">
+            openrouter.ai/models</a
+          >.
+        </small>
+      </label>
+
+      <label class="field">
+        <span>Your CV / resume (optional, .txt or .pdf)</span>
+        <textarea id="cv-text" rows="8" placeholder="Paste your CV, or upload a file below."></textarea>
+      </label>
+
+      <label class="field">
+        <span>Upload a CV file</span>
+        <input id="cv-file" type="file" accept=".txt,.pdf,text/plain,application/pdf" />
+      </label>
+
+      <label class="field checkbox-field">
+        <input id="include-cv-fit" type="checkbox" checked />
+        <span>Include "Fit with your CV" in summaries</span>
+      </label>
+
+      <small class="hint">
+        When on (default), each summary also assesses how well the page's content
+        matches your saved CV — so you don't need a follow-up question for every
+        job posting. Enabled only if a CV is saved.
+      </small>
+
+      <small class="hint cv-privacy">
+        Once saved, your CV is included in every chat question you ask (not
+        just CV-specific ones), so you can naturally ask things like "what's
+        missing from my CV for this role?" alongside general questions. Clear
+        the CV field in Settings to stop sending it.
+      </small>
+
+      <div class="actions">
+        <button type="submit" id="save-btn">Save</button>
+        <span id="saved-notice" class="saved" hidden>Saved ✓</span>
+      </div>
+    </form>
+
+    <script src="lib/pdf.min.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>
