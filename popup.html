@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Summa</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="header-row">
+        <div class="header-text">
+          <h1 id="page-title" title=""></h1>
+          <div id="page-url" class="muted"></div>
+        </div>
+        <button id="model-badge" type="button" class="model-badge" title="Current model (click to change in Settings)"></button>
+      </div>
+    </header>
+
+    <!-- No API key notice — deep-links into Settings. -->
+    <section id="no-key" class="notice" hidden>
+      <p>Add your OpenRouter API key to get started.</p>
+      <button id="open-settings" type="button" class="link">Open Settings</button>
+    </section>
+
+    <button id="summarize-btn" type="button" class="primary">Summarize this page</button>
+    <p id="status" class="status" role="status" aria-live="polite" hidden></p>
+
+    <!-- Results + chat (revealed after a successful summary). -->
+    <section id="result" hidden>
+      <div class="summary-heading">
+        <span class="summary-label">Summary</span>
+        <button id="new-summary" type="button" class="ghost small" title="Start a fresh summary">New</button>
+      </div>
+      <div id="summary-text" class="summary"></div>
+
+      <!-- Structured job-posting view (contentType === "job_posting"). -->
+      <div id="job-view" class="job-view" hidden></div>
+
+      <div id="chat-log" class="chat-log" aria-live="polite"></div>
+
+      <!-- Follow-up questions, listed below the last message. -->
+      <h3>Ask a question</h3>
+      <div id="chips" class="chips"></div>
+      <div class="chat-input-row">
+        <input
+          id="chat-input"
+          type="text"
+          placeholder="Ask about this page…"
+          autocomplete="off"
+        />
+        <button id="chat-send" type="button">Send</button>
+      </div>
+      <p id="chat-status" class="status" role="status" aria-live="polite" hidden></p>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
