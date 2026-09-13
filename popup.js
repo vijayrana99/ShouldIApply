@@ -432,43 +432,49 @@ function jobSection(title, body) {
   return card;
 }
 
-function renderCvFitSection() {
+// CV onboarding / refresh footer (§3 + §4.6).
+function renderCvFooter(job, fit) {
   const wrap = document.createElement("div");
   wrap.className = "cvfit";
-  wrap.id = "cvfit-wrap";
-  const btn = jobEl("button", "ghost small", "Compare with my CV");
+
+  if (!fit) {
+    // Empty-CV state: CV-first onboarding, not the full breakdown.
+    const onboard = document.createElement("div");
+    onboard.className = "cv-onboard";
+    const title = jobEl("div", "cv-onboard-title", "Add your CV to see if this job fits you");
+    onboard.appendChild(title);
+    const blurb = jobEl("div", "job-muted", "We need your CV to compare against this posting. Requirements stay hidden until then.");
+    onboard.appendChild(blurb);
+    const btn = jobEl("button", "primary", "Open CV settings");
+    btn.type = "button";
+    btn.addEventListener("click", () => chrome.runtime.openOptionsPage());
+    onboard.appendChild(btn);
+    wrap.appendChild(onboard);
+    return wrap;
+  }
+
+  // Fit exists -> refresh footer.
+  const btn = jobEl("button", "ghost small", "Refresh with updated CV");
   btn.type = "button";
   wrap.appendChild(btn);
   btn.addEventListener("click", async () => {
-    if (!currentJob) return;
     btn.disabled = true;
-    const status = jobEl("div", "job-muted", "Analyzing fit against your CV…");
+    const status = jobEl("div", "job-muted", "Analyzing fit against your CV...");
     wrap.appendChild(status);
     const res = await chrome.runtime.sendMessage({ action: "cvFit", job: currentJob });
     status.remove();
     if (res && res.ok) {
-      const fit = res.fit;
-      const box = document.createElement("div");
-      box.className = "cvfit-result";
-      box.innerHTML = ""; // built safely below
-      const top = jobEl("div", "cvfit-top", `Fit score: ${fit.fitScore}% — ${fit.verdict}`);
-      box.appendChild(top);
-      if (fit.matched.length) {
-        box.appendChild(jobEl("div", "cvfit-label", "Matched"));
-        box.appendChild(jobListSection(fit.matched.map((m) => `${m.requirement} — ${m.why}`)));
-      }
-      if (fit.missing.length) {
-        box.appendChild(jobEl("div", "cvfit-label", "Missing / gaps"));
-        box.appendChild(jobListSection(fit.missing.map((m) => `${m.requirement} — ${m.why}`)));
-      }
-      wrap.appendChild(box);
+      currentFit = res.fit;
+      await saveSession();
+      reRenderJobView();
     } else {
-      wrap.appendChild(jobEl("div", "job-error", (res && res.message) || "Couldn't analyze fit."));
+      wrap.appendChild(jobEl("div", "job-error", (res && res.message) || "Could not analyze fit."));
     }
     btn.disabled = false;
   });
   return wrap;
 }
+
 // Verdict bucketing (§6). Returns { label, tone } or null if no usable score.
 function verdictBand(score) {
   if (typeof score !== "number" || score < 0 || score > 100) return null;
@@ -618,6 +624,16 @@ function renderJobViewInto(root, job, fit) {
   }
 }
 
+
+// re-render helper
+function reRenderJobView() {
+  els.jobView.innerHTML = "";
+  els.jobView.hidden = false;
+  els.jobView.appendChild(renderFitHero(currentJob, currentFit));
+  renderJobViewInto(els.jobView, currentJob, currentFit);
+  els.jobView.appendChild(renderCvFooter(currentJob, currentFit));
+}
+
 let currentJob = null;
 let currentFit = null;
 let currentContentType = null;
@@ -649,6 +665,7 @@ async function summarize() {
       els.jobView.appendChild(renderFitHero(currentJob, currentFit));
       // Next sections (why/this-score, flags, collapsed details) appended here later.
       renderJobViewInto(els.jobView, currentJob, currentFit);
+      els.jobView.appendChild(renderCvFooter(currentJob, currentFit));
       await renderChips();
       setStatus("");
     } else {
@@ -729,6 +746,7 @@ async function restoreSession(tabId) {
     els.jobView.hidden = false;
     els.jobView.appendChild(renderFitHero(currentJob, currentFit));
     renderJobViewInto(els.jobView, currentJob, currentFit);
+    els.jobView.appendChild(renderCvFooter(currentJob, currentFit));
   } else {
     els.jobView.hidden = true;
     els.summaryText.hidden = false;
