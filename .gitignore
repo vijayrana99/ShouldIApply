@@ -1,0 +1,18 @@
+# secrets
+*.pem
+*.key
+.env
+
+# chrome artifacts
+*.crx
+*.crdownload
+
+# node (only for re-vendoring)
+node_modules/
+
+# os/editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

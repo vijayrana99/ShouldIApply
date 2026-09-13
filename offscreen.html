@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>ShouldIApply — PDF extractor</title>
+  </head>
+  <body>
+    <!-- Offscreen document. Has a DOM so pdf.js can run here (the MV3
+         service worker has no DOM). Loads pdf.min.js as a plain script,
+         which defines the global `pdfjsLib`. -->
+    <script src="lib/pdf.min.js"></script>
+    <script src="offscreen.js"></script>
+  </body>
+</html>
