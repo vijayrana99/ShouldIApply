@@ -645,7 +645,7 @@ async function summarize() {
     return;
   }
   els.summarizeBtn.disabled = true;
-  setStatus("Checking if this job fits you…");
+  setStatus("Checking if this job is right for you…");
 
   const res = await chrome.runtime.sendMessage({ action: "extractJob", tabId: currentTabId });
 
