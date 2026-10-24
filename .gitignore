@@ -16,3 +16,48 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Local credentials and private configuration
+.env.*
+!.env.example
+!.env.sample
+*.p12
+*.pfx
+*.p8
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+credentials.json
+credentials.*.json
+client_secret*.json
+service-account*.json
+secrets.json
+secrets.*.json
+secrets/
+.npmrc
+.pypirc
+
+# Browser profiles and extension storage exports (may contain API keys/CVs)
+/playwright/.auth/
+/browser-profile/
+/chrome-profile/
+/user-data/
+/storage-state*.json
+/storageState*.json
+/summaSessions*.json
+/summaSession*.json
+
+# Personal CV/resume files; keep shared source/docs trackable
+/[Cc][Vv].*
+/[Cc][Vv]-*
+/[Cc][Vv]_*
+/[Rr]esume.*
+/[Rr]esume-*
+/[Rr]esume_*
+/[Cc]urriculum-[Vv]itae*
+/private/
+/personal/
+
+# Logs can contain page text, model responses, or credentials
+*.log
