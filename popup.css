@@ -717,3 +717,13 @@ h3 {
 .cv-onboard button.primary {
   margin-top: 8px;
 }
+
+/* Let long analyses scroll inside the viewport while panel controls stay visible. */
+body.panel { display: flex; flex-direction: column; height: 100vh; width: 100%; overflow: hidden; }
+#result { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+#result::-webkit-scrollbar { display: block; width: 8px; }
+#result::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: var(--radius-full); }
+body.panel > .notice,
+body.panel > .primary,
+body.panel > .status,
+body.panel > .panel-footer { flex-shrink: 0; }
