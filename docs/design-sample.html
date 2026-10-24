@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style>
+<script src="https://cdn.tailwindcss.com"></script>
+<script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-tint":"#4d44e3","on-tertiary-container":"#ffd2b1","secondary-fixed":"#85f8c4","surface-dim":"#cbdbf5","secondary-container":"#82f5c1","on-tertiary-fixed-variant":"#6e3900","surface-container-highest":"#d3e4fe","outline-variant":"#c7c4d8","on-primary":"#ffffff","surface-container-lowest":"#ffffff","primary-fixed":"#e2dfff","on-tertiary-fixed":"#2f1500","tertiary-fixed":"#ffdcc3","outline":"#777587","on-tertiary":"#ffffff","on-secondary-fixed":"#002114","tertiary":"#703a00","on-secondary-container":"#00714e","tertiary-container":"#934e00","inverse-primary":"#c3c0ff","surface-container-high":"#dce9ff","error-container":"#ffdad6","on-secondary-fixed-variant":"#005137","secondary":"#006c4a","surface-bright":"#f8f9ff","on-primary-container":"#dad7ff","on-surface-variant":"#464555","on-error":"#ffffff","inverse-on-surface":"#eaf1ff","error":"#ba1a1a","on-primary-fixed-variant":"#3323cc","primary-fixed-dim":"#c3c0ff","on-secondary":"#ffffff","on-surface":"#0b1c30","background":"#f8f9ff","surface-variant":"#d3e4fe","on-background":"#0b1c30","primary-container":"#4f46e5","inverse-surface":"#213145","surface-container-low":"#eff4ff","surface-container":"#e5eeff","primary":"#3525cd","tertiary-fixed-dim":"#ffb77d","secondary-fixed-dim":"#68dba9","on-error-container":"#93000a","surface":"#f8f9ff","on-primary-fixed":"#0f0069"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"space-sm":"0.5rem","space-md":"0.75rem",margin:"1rem","space-lg":"1rem","space-xs":"0.25rem",gutter:"0.75rem","space-xl":"1.5rem"},fontFamily:{"headline-lg":["Inter"],"body-lg":["Inter"],"label-sm":["Inter"],"headline-md":["Inter"],"label-lg":["Inter"],"body-md":["Inter"],"headline-sm":["Inter"],"label-md":["Inter"],"body-sm":["Inter"]},fontSize:{"headline-lg":["20px",{lineHeight:"28px",letterSpacing:"-0.02em",fontWeight:"600"}],"body-lg":["14px",{lineHeight:"22px",letterSpacing:"-0.005em",fontWeight:"400"}],"label-sm":["10px",{lineHeight:"12px",letterSpacing:"0.04em",fontWeight:"700"}],"headline-md":["16px",{lineHeight:"24px",letterSpacing:"-0.015em",fontWeight:"600"}],"label-lg":["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"600"}],"body-md":["13px",{lineHeight:"20px",letterSpacing:"0em",fontWeight:"400"}],"headline-sm":["14px",{lineHeight:"20px",letterSpacing:"-0.01em",fontWeight:"600"}],"label-md":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],"body-sm":["12px",{lineHeight:"18px",letterSpacing:"0em",fontWeight:"400"}]}}}};</script>
+</head>
+<body class="bg-surface text-on-surface font-body-md text-body-md antialiased min-h-screen relative overflow-x-hidden p-space-lg">
+
+<!-- Floating / Docked Side Panel Container (Strict 410px overlay architecture) -->
+<div class="w-full xl:w-[420px] shrink-0 bg-surface-container-lowest rounded-xl shadow-xl flex flex-col relative overflow-hidden transition-all">
+<!-- Panel Chrome Topbar -->
+<div class="px-space-md py-space-sm bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<img alt="Quick Summarize AI logo" class="w-5 h-5 rounded-md object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1U0rt7-_ZGjwW_Cp__NWi8W38edO-lWCp0zZsJMPEonoLjusG-ayk0ybpxzijxHBWcoiRVEvyGhYO0h1gVTxlNkrE2-WQgQrKe6sc4rRD5wgYY1G30sMoFFZ-HEDSUJpi8MRgAP125AV0YuM06QLOz9qGq-sJGs3oquzkxHryAWc2VLVwhme_tAESqWx5v3O0aHZk5aItORj7hTBa7rZDSgTBdcxrnfrLjpSdcgy5knflePJxyTiLrklKk"/>
+<span class="font-label-md text-label-md text-on-surface font-semibold tracking-wide">Quick Summarize AI</span>
+<span class="font-label-sm text-label-sm bg-tertiary-fixed text-on-tertiary-fixed px-1.5 py-0.5 rounded-full font-bold">MISSING DATA MODE</span>
+</div>
+<div class="flex items-center gap-1 text-outline">
+<button class="w-6 h-6 rounded flex items-center justify-center hover:bg-surface-container hover:text-on-surface transition-colors" title="Pin Panel">
+<span class="material-symbols-outlined text-[16px]">push_pin</span>
+</button>
+<button class="w-6 h-6 rounded flex items-center justify-center hover:bg-surface-container hover:text-on-surface transition-colors" title="Dock Left/Right">
+<span class="material-symbols-outlined text-[16px]">dock_to_right</span>
+</button>
+<button class="w-6 h-6 rounded flex items-center justify-center hover:bg-surface-container hover:text-on-surface transition-colors" title="Close Panel">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Extension Body -->
+<div class="p-space-md space-y-space-md overflow-y-auto max-h-[calc(100vh-14rem)]">
+<!-- Job Header & Fit Score Ring -->
+<div class="bg-surface-container-low p-space-md rounded-xl space-y-space-md">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="space-y-0.5 flex-1 min-w-0">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider block">Live Analysis</span>
+<h1 class="font-headline-md text-headline-md text-on-surface truncate">Product Design Lead</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1 truncate">
+<span class="material-symbols-outlined text-[14px] text-tertiary">lock</span>
+<span>Stealth AI Startup</span>
+<span>•</span>
+<span class="text-tertiary font-semibold">Location Unspecified</span>
+</p>
+</div>
+<!-- 62% Circular Ring Indicator (Amber / Caution) -->
+<div class="relative w-14 h-14 shrink-0 flex items-center justify-center">
+<svg class="w-14 h-14 transform -rotate-90" viewbox="0 0 48 48">
+<circle class="text-surface-container-highest" cx="24" cy="24" fill="transparent" r="19" stroke="currentColor" stroke-width="4"></circle>
+<circle class="text-tertiary-container" cx="24" cy="24" fill="transparent" r="19" stroke="currentColor" stroke-dasharray="119.38" stroke-dashoffset="45.36" stroke-linecap="round" stroke-width="4"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-headline-sm text-headline-sm text-tertiary leading-none">62%</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant leading-none mt-0.5">FIT</span>
+</div>
+</div>
+</div>
+<!-- Verdict Banner with Amber Indicator -->
+<div class="flex items-center gap-space-xs p-space-xs px-space-sm rounded-lg bg-tertiary-fixed/40 text-on-tertiary-fixed">
+<span class="material-symbols-outlined text-tertiary text-[18px]">report_problem</span>
+<p class="font-label-lg text-label-lg">Verdict: <span class="font-bold">Partial Match — Needs Verification</span></p>
+</div>
+</div>
+<!-- Warning Pill / Data Quality Notice -->
+<div class="bg-surface-container-high/60 p-space-sm rounded-lg flex items-center gap-space-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-tertiary text-[18px] shrink-0">info</span>
+<p class="font-body-sm text-body-sm leading-tight">
+            Scanner detected <strong class="text-on-surface">3 high-impact omissions</strong> in this posting. Evaluate suggested inquiries below.
+          </p>
+</div>
+<!-- Quick-Facts Strip with highlighted gaps/neutral placeholders -->
+<div class="space-y-1.5">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Parameters Extracted</span>
+<span class="font-label-sm text-label-sm text-tertiary font-semibold">2 of 5 Confirmed</span>
+</div>
+<div class="flex flex-wrap gap-1.5">
+<!-- 📍 Location: Not Disclosed -->
+<div class="flex items-center gap-1 px-2 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-outline text-[13px]">location_off</span>
+<span>Location: <strong class="text-on-surface">Not Disclosed</strong></span>
+</div>
+<!-- 🏢 Hybrid / Remote Unspecified (Amber chip) -->
+<div class="flex items-center gap-1 px-2 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-md text-label-md">
+<span class="material-symbols-outlined text-[13px] text-tertiary">help_center</span>
+<span>Hybrid / Remote Unspecified</span>
+</div>
+<!-- 💼 Full-time (Assumed) -->
+<div class="flex items-center gap-1 px-2 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-outline text-[13px]">work_history</span>
+<span>Full-time <em class="opacity-75 font-normal">(Assumed)</em></span>
+</div>
+<!-- 💰 Salary: Not Disclosed on Page -->
+<div class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-tertiary-container text-on-tertiary font-label-md text-label-md">
+<span class="material-symbols-outlined text-[13px]">monetization_on</span>
+<span>Salary: Not Disclosed on Page</span>
+<span class="material-symbols-outlined text-[13px] opacity-90">help</span>
+</div>
+<!-- 🌍 Visa Sponsorship: Unclear -->
+<div class="flex items-center gap-1 px-2 py-1 rounded-full bg-surface-container-high text-on-surface font-label-md text-label-md">
+<span class="material-symbols-outlined text-outline text-[13px]">public</span>
+<span>Visa Sponsorship: <span class="text-tertiary font-semibold">Unclear (Verify)</span></span>
+</div>
+</div>
+</div>
+<!-- Skills Match Matrix Section -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl space-y-space-sm shadow-sm">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Skills Compatibility</h2>
+<span class="font-label-sm text-label-sm bg-surface-container-high px-2 py-0.5 rounded text-on-surface-variant">5 of 8 matched</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            You match 5 of 8 identified skills (<span class="text-tertiary font-semibold">3 skills ambiguous</span> in source text).
+          </p>
+<!-- Skills List -->
+<div class="space-y-1.5 pt-1">
+<!-- Confirmed Matched Skill 1 -->
+<div class="flex items-center justify-between p-1.5 px-2 bg-secondary-container/30 rounded-lg">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+<span class="font-label-lg text-label-lg text-on-surface">Design Systems Leadership</span>
+</div>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-semibold">Confirmed Match</span>
+</div>
+<!-- Confirmed Matched Skill 2 -->
+<div class="flex items-center justify-between p-1.5 px-2 bg-secondary-container/30 rounded-lg">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+<span class="font-label-lg text-label-lg text-on-surface">0-to-1 Product Architecture</span>
+</div>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-semibold">Confirmed Match</span>
+</div>
+<!-- Confirmed Matched Skill 3 -->
+<div class="flex items-center justify-between p-1.5 px-2 bg-secondary-container/30 rounded-lg">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+<span class="font-label-lg text-label-lg text-on-surface">Figma &amp; Prototyping</span>
+</div>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-semibold">Confirmed Match</span>
+</div>
+<!-- Ambiguous Skill 1 -->
+<div class="p-1.5 px-2 bg-surface-container-low rounded-lg space-y-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-outline text-[16px]">question_mark</span>
+<span class="font-label-lg text-label-lg text-on-surface-variant">Generative AI UX Workflows</span>
+</div>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-semibold">Ambiguous in Post</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline pl-5">Job mentions "modern AI interaction paradigms" without technical specificity.</p>
+</div>
+<!-- Ambiguous Skill 2 -->
+<div class="p-1.5 px-2 bg-surface-container-low rounded-lg space-y-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-outline text-[16px]">question_mark</span>
+<span class="font-label-lg text-label-lg text-on-surface-variant">Front-end Code Ownership</span>
+</div>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-semibold">Ambiguous in Post</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline pl-5">Unclear whether production React/TypeScript is required or purely visual handoff.</p>
+</div>
+<!-- Ambiguous Skill 3 -->
+<div class="p-1.5 px-2 bg-surface-container-low rounded-lg space-y-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-outline text-[16px]">question_mark</span>
+<span class="font-label-lg text-label-lg text-on-surface-variant">Direct Team Management</span>
+</div>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-semibold">Ambiguous in Post</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline pl-5">Title says "Lead" but responsibilities describe an individual contributor founding role.</p>
+</div>
+</div>
+</div>
+<!-- Accordions: Detailed Missing-Info Breakdowns -->
+<div class="space-y-2">
+<!-- Accordion 1: Requirements Clarity -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden">
+<button class="w-full flex items-center justify-between p-space-md text-left hover:bg-surface-container transition-colors" onclick="toggleAccordion('acc-req')">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">checklist</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Requirement Specificity</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-tertiary font-bold">2 Vague</span>
+<span class="material-symbols-outlined text-[18px] text-outline transition-transform duration-200" id="chevron-acc-req">expand_more</span>
+</div>
+</button>
+<div class="px-space-md pb-space-md space-y-2" id="acc-req">
+<div class="p-space-sm bg-surface-container-lowest rounded-lg">
+<p class="font-body-sm text-body-sm text-on-surface">
+                  Found <strong>4 explicit requirements</strong> in job description. <strong>2 items lack specificity</strong>:
+                </p>
+<ul class="font-body-sm text-body-sm text-on-surface-variant list-disc pl-5 mt-1 space-y-1">
+<li>"Extensive track record with high-scale tech" (No year baseline provided)</li>
+<li>"Comfortable with rapid sprints" (No on-call or weekend policy stated)</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Accordion 2: Compensation Intelligence (Prominent Info Box) -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden">
+<button class="w-full flex items-center justify-between p-space-md text-left hover:bg-surface-container transition-colors" onclick="toggleAccordion('acc-comp')">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">payments</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Estimated Compensation Gap</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded font-bold">Unlisted</span>
+<span class="material-symbols-outlined text-[18px] text-outline transition-transform duration-200 rotate-180" id="chevron-acc-comp">expand_more</span>
+</div>
+</button>
+<div class="px-space-md pb-space-md space-y-2.5" id="acc-comp">
+<div class="p-space-md rounded-xl bg-surface-container-lowest space-y-space-sm">
+<div class="flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-[20px] shrink-0">monetization_on</span>
+<p class="font-body-sm text-body-sm text-on-surface">
+<strong>Compensation not disclosed in posting.</strong> Based on market data for Senior/Lead Product Designers in US, median is <span class="font-bold text-on-surface">$170k – $210k base</span> + equity.
+                  </p>
+</div>
+<!-- Market Benchmark Pill Graph -->
+<div class="space-y-1 bg-surface-container-low p-2 rounded-lg">
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Market 25th: $155k</span>
+<span class="font-semibold text-primary">Median: $188k</span>
+<span>Market 75th: $220k</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden flex">
+<div class="w-1/4 bg-surface-container"></div>
+<div class="w-2/4 bg-primary rounded-full"></div>
+<div class="w-1/4 bg-surface-container"></div>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-tertiary-fixed/30 space-y-1">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-tertiary-fixed font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">psychology_alt</span>
+                    Recommended Question to Recruiter
+                  </span>
+<p class="font-body-sm text-body-sm text-on-surface font-medium italic">
+                    "What is the approved compensation band and equity package structure for this founding role?"
+                  </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Accordion 3: Deeper Analysis & Company Footprint -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden">
+<button class="w-full flex items-center justify-between p-space-md text-left hover:bg-surface-container transition-colors" onclick="toggleAccordion('acc-org')">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[18px]">corporate_fare</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Startup Footprint &amp; Diligence</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-outline font-bold">Unverified</span>
+<span class="material-symbols-outlined text-[18px] text-outline transition-transform duration-200" id="chevron-acc-org">expand_more</span>
+</div>
+</button>
+<div class="px-space-md pb-space-md space-y-2 hidden" id="acc-org">
+<div class="p-space-sm bg-surface-container-lowest rounded-lg space-y-1.5">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                  Early-stage startup footprint: <strong class="text-on-surface">Limited public Glassdoor data available.</strong> Stealth funding status unverified through Crunchbase webhooks.
+                </p>
+<div class="flex items-center gap-2 text-label-sm font-label-sm text-outline">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">business</span> Team: ~5-15 employees</span>
+<span>•</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">shield</span> Unchecked runway</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Footer Action Bar -->
+<div class="p-space-md bg-surface-container-lowest shadow-[0_-4px_12px_rgba(0,0,0,0.03)] space-y-2">
+<div class="flex gap-2">
+<!-- Primary Recruiter Checklist CTA -->
+<button class="flex-1 h-9 px-space-md bg-primary-container hover:bg-primary text-on-primary rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm" id="openChecklistBtn" onclick="toggleModal(true)">
+<span class="material-symbols-outlined text-[16px]">contact_support</span>
+<span>Ask Recruiter Questions</span>
+</button>
+<!-- Secondary Inquire CTA -->
+<button class="h-9 px-space-md bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-1 transition-colors" id="copyPromptBtn" onclick="handleQuickCopy()" title="Copy Inquiries to Clipboard">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+<span>Copy Gap Prompts</span>
+</button>
+</div>
+<div class="flex items-center justify-between px-1">
+<span class="font-label-sm text-label-sm text-outline flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container animate-ping"></span>
+            3 Missing Fields Flagged
+          </span>
+<a class="font-label-sm text-label-sm text-primary hover:underline flex items-center gap-0.5" href="#">
+<span>Re-analyze full page</span>
+<span class="material-symbols-outlined text-[12px]">refresh</span>
+</a>
+</div>
+</div>
+<!-- Interactive Modal: Generated Recruiter Question Checklist -->
+<div class="hidden absolute inset-0 bg-surface/90 backdrop-blur-sm p-space-md flex flex-col justify-end z-50 transition-all" id="checklistModal">
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-xl space-y-space-md animate-in slide-in-from-bottom duration-200">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[20px]">assignment</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Recruiter Questions Checklist</h3>
+</div>
+<button class="w-6 h-6 rounded flex items-center justify-center text-outline hover:text-on-surface" onclick="toggleModal(false)">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            These questions target the unstated fields in the posting before proceeding with technical interviews:
+          </p>
+<div class="space-y-2">
+<label class="flex items-start gap-2 p-2 rounded-lg bg-surface-container-low cursor-pointer hover:bg-surface-container transition-colors">
+<input checked="" class="mt-0.5 accent-primary" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">"What is the designated base salary band and target bonus or equity range?"</span>
+</label>
+<label class="flex items-start gap-2 p-2 rounded-lg bg-surface-container-low cursor-pointer hover:bg-surface-container transition-colors">
+<input checked="" class="mt-0.5 accent-primary" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">"Is the team distributed, or is there a required in-office cadence at a specific hub?"</span>
+</label>
+<label class="flex items-start gap-2 p-2 rounded-lg bg-surface-container-low cursor-pointer hover:bg-surface-container transition-colors">
+<input checked="" class="mt-0.5 accent-primary" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">"Does this founding lead role carry direct reports immediately or begin as an individual contributor?"</span>
+</label>
+</div>
+<div class="flex gap-2 pt-1">
+<button class="flex-1 h-9 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-1" onclick="copyAndClose()">
+<span class="material-symbols-outlined text-[16px]">done_all</span>
+<span>Copy Selected to Clipboard</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Inline Script for Accordion & Modal Interactions -->
+<script>
+    function toggleAccordion(id) {
+      const content = document.getElementById(id);
+      const chevron = document.getElementById('chevron-' + id);
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+      } else {
+        content.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
+      }
+    }
+
+    function toggleModal(show) {
+      const modal = document.getElementById('checklistModal');
+      if (show) {
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function handleQuickCopy() {
+      const btn = document.getElementById('copyPromptBtn');
+      const textToCopy = "1. Approved compensation band?\\n2. Remote vs in-office cadence?\\n3. Team reporting structure?";
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        btn.classList.add('bg-secondary-container', 'text-on-secondary-container');
+        btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span><span>Copied!</span>';
+        setTimeout(() => {
+          btn.classList.remove('bg-secondary-container', 'text-on-secondary-container');
+          btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">content_copy</span><span>Copy Gap Prompts</span>';
+        }, 1800);
+      });
+    }
+
+    function copyAndClose() {
+      handleQuickCopy();
+      toggleModal(false);
+    }
+  </script>
+</body>
+</html>
