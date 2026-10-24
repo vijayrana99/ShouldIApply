@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Does this job fit me? Instantly see whether a job posting matches your CV.",
   "permissions": ["storage", "activeTab", "scripting", "offscreen"],
+  "host_permissions": ["https://openrouter.ai/*"],
   "background": { "service_worker": "background.js" },
   "action": {
     "default_icon": {

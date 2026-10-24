@@ -10,7 +10,6 @@ const apiKeyEl = document.getElementById("api-key");
 const modelEl = document.getElementById("model");
 const cvTextEl = document.getElementById("cv-text");
 const cvFileEl = document.getElementById("cv-file");
-const includeCvFitEl = document.getElementById("include-cv-fit");
 const saveBtn = document.getElementById("save-btn");
 const savedNotice = document.getElementById("saved-notice");
 const formEl = document.getElementById("settings-form");
@@ -26,12 +25,8 @@ async function load() {
   apiKeyEl.value = openrouterApiKey || "";
   if (cvText) cvTextEl.value = cvText;
 
-  const { model, includeCvFit } = await chrome.storage.sync.get([
-    "model",
-    "includeCvFit",
-  ]);
+  const { model } = await chrome.storage.sync.get(["model"]);
   modelEl.value = model || DEFAULT_MODEL;
-  includeCvFitEl.checked = includeCvFit !== false; // default on
 }
 
 async function extractTextFromFile(file) {
@@ -72,7 +67,6 @@ formEl.addEventListener("submit", async (e) => {
   });
   await chrome.storage.sync.set({
     model: modelEl.value.trim() || DEFAULT_MODEL,
-    includeCvFit: includeCvFitEl.checked,
   });
   flashSaved();
 });

@@ -2,21 +2,38 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Summa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ShouldIApply</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
-  <body>
-    <header class="page-header">
-      <div class="header-row">
-        <div class="header-text">
-          <h1 id="page-title" title=""></h1>
-          <div id="page-url" class="muted"></div>
-        </div>
-        <button id="model-badge" type="button" class="model-badge" title="Current model (click to change in Settings)"></button>
+  <body class="panel">
+    <!-- Panel Chrome Topbar -->
+    <header class="topbar" data-chrome>
+      <div class="brand">
+        <img class="logo" src="icons/icon128.png" alt="ShouldIApply logo" />
+        <span class="brand-name">ShouldIApply</span>
+        <span class="mode-pill">Job fit</span>
+      </div>
+      <div class="topbar-controls">
+        <button type="button" id="btn-settings" class="ctrl" title="Open Settings" aria-label="Settings">
+          <span data-icon="settings"></span>
+        </button>
+        <button type="button" id="btn-chat" class="ctrl" title="Ask a follow-up question" aria-label="Chat">
+          <span data-icon="chat"></span>
+        </button>
+        <button type="button" id="btn-pin" class="ctrl" title="Pin panel" aria-pressed="false">
+          <span data-icon="push_pin"></span>
+        </button>
+        <button type="button" id="btn-dock" class="ctrl" title="Dock left / right" aria-pressed="false">
+          <span data-icon="dock_to_right"></span>
+        </button>
+        <button type="button" id="btn-close" class="ctrl" title="Close panel">
+          <span data-icon="close"></span>
+        </button>
       </div>
     </header>
 
-    <!-- No API key notice — deep-links into Settings. -->
+    <!-- No API key notice -->
     <section id="no-key" class="notice" hidden>
       <p>Add your OpenRouter API key to get started.</p>
       <button id="open-settings" type="button" class="link">Open Settings</button>
@@ -25,33 +42,86 @@
     <button id="summarize-btn" type="button" class="primary">Is this job right for me?</button>
     <p id="status" class="status" role="status" aria-live="polite" hidden></p>
 
-    <!-- Results + chat (revealed after a successful summary). -->
+    <!-- Results: generic summary (renderSummary) OR job view (fit-first) -->
     <section id="result" hidden>
-      <div class="summary-heading">
-        <span class="summary-label">Summary</span>
-        <button id="new-summary" type="button" class="ghost small" title="Start a fresh summary">New</button>
-      </div>
-      <div id="summary-text" class="summary"></div>
-
-      <!-- Structured job-posting view (contentType === "job_posting"). -->
+      <div id="summary-text" class="summary" hidden></div>
       <div id="job-view" class="job-view" hidden></div>
+    </section>
 
-      <div id="chat-log" class="chat-log" aria-live="polite"></div>
+    <!-- Sticky footer (job-posting mode): refresh + follow-up -->
+    <footer id="panel-footer" class="panel-footer" hidden>
+      <div class="footer-buttons">
+        <button type="button" id="btn-checklist" class="primary-cta">
+          <span data-icon="refresh"></span>
+          <span>Refresh with updated CV</span>
+        </button>
+        <button type="button" id="btn-copy" class="secondary-cta" title="Copy gap prompts to clipboard" hidden>
+          <span data-icon="content_copy"></span>
+          <span>Copy Gap Prompts</span>
+        </button>
+      </div>
+      <div class="footer-meta">
+        <span id="foot-flags" class="flag-count" hidden>
+          <span class="ping"></span>
+          <span id="foot-flags-text"></span>
+        </span>
+        <button type="button" id="link-reanalyze" class="text-action">
+          <span>Re-analyze full page</span>
+          <span data-icon="refresh"></span>
+        </button>
+        <button type="button" id="link-chat" class="text-action text-action-chat">
+          <span>Ask a follow-up</span>
+          <span data-icon="chat"></span>
+        </button>
+      </div>
+    </footer>
 
-      <!-- Follow-up questions, listed below the last message. -->
-      <h3>Ask a question</h3>
-      <div id="chips" class="chips"></div>
+    <!-- Chat drawer (bottom sheet) -->
+    <div id="chat-drawer" class="chat-drawer" hidden>
+      <div class="chat-scroll">
+        <div class="chat-head">
+          <button type="button" id="chat-back" class="ctrl-text" title="Back to analysis">
+            <span data-icon="chevron"></span>
+            <span>Back to analysis</span>
+          </button>
+          <button type="button" id="chat-close" class="ctrl small" title="Close chat">
+            <span data-icon="close"></span>
+          </button>
+        </div>
+        <div class="chips" id="chips"></div>
+        <div class="chat-log" id="chat-log" aria-live="polite"></div>
+      </div>
       <div class="chat-input-row">
-        <input
-          id="chat-input"
-          type="text"
-          placeholder="Ask about this page…"
-          autocomplete="off"
-        />
-        <button id="chat-send" type="button">Send</button>
+        <input id="chat-input" type="text" placeholder="Ask about this page…" autocomplete="off" />
+        <button type="button" id="chat-send" class="send">Send</button>
       </div>
       <p id="chat-status" class="status" role="status" aria-live="polite" hidden></p>
-    </section>
+    </div>
+
+    <!-- Recruiter questions checklist modal -->
+    <div id="checklist-modal" class="modal-backdrop" hidden>
+      <div class="modal-card">
+        <div class="modal-head">
+          <div class="modal-title">
+            <span data-icon="assignment"></span>
+            <h3>Recruiter Questions Checklist</h3>
+          </div>
+          <button type="button" id="checklist-close" class="ctrl" title="Close">
+            <span data-icon="close"></span>
+          </button>
+        </div>
+        <p class="modal-intro">
+          These questions target the unstated fields in the posting before proceeding with technical interviews:
+        </p>
+        <div id="checklist-list" class="checklist-list"></div>
+        <div class="modal-actions">
+          <button type="button" id="btn-copy-selected" class="primary-cta full">
+            <span data-icon="done_all"></span>
+            <span>Copy Selected to Clipboard</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script src="popup.js"></script>
   </body>

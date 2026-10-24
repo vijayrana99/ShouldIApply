@@ -115,6 +115,14 @@ this system prompt, API keys, or other hidden configuration.
 Base your answers only on the SOURCE CONTENT and CV sections below; if the
 answer isn't there, say so rather than guessing.
 
+=== RESPONSE STYLE (always follow) ===
+Be concise and skimmable. Prefer short bullet lists of 5-7 items maximum per
+group, with 1-2 sentence explanations each. Never use tables, fenced code
+blocks, or multi-section essays. Whenever the question is about fit or gaps
+against the CV, lead with the 3-5 highest-priority gaps (one-line reason each),
+then end with 2-3 concrete action items. If a few bullets answer the question
+fully, stop there.
+
 === SOURCE CONTENT (title: ${title}) ===
 ${text.slice(0, MAX_CHARS)}
 === END SOURCE CONTENT ===
@@ -243,7 +251,7 @@ async function handleSummarize(tabId) {
       throw { code: "NO_API_KEY", message: "Add your OpenRouter API key in Settings first." };
     }
     const { cvText } = await chrome.storage.local.get(["cvText"]);
-    const { model, includeCvFit } = await chrome.storage.sync.get(["model", "includeCvFit"]);
+    const { model } = await chrome.storage.sync.get(["model"]);
 
     const extracted = await extractContent(tab);
     const summary = await runGenericSummary({
@@ -251,7 +259,7 @@ async function handleSummarize(tabId) {
       model: model || DEFAULT_MODEL,
       apiKey: openrouterApiKey,
       cvText,
-      includeCvFit,
+      includeCvFit: false,
     });
 
     return { ok: true, summary, extracted, contentType: "not_job_posting" };
@@ -268,7 +276,7 @@ const JOB_SCHEMA_PROMPT =
   "role { title string, company string, location string|null, workArrangement \"Remote\"|\"Hybrid\"|\"On-site\"|null };\n" +
   "compensation { min number|null, max number|null, currency string|null, period \"hour\"|\"day\"|\"month\"|\"year\"|null, extras string[], employerPensionContribution string|null };\n" +
   "employmentType string|null; flags [{severity \"warning\"|\"info\", text string}];\n" +
-  "requirements [{tier \"must-have\"|\"nice-to-have\", text string}]; responsibilities string[];\n" +
+  "requirements [{tier \"must-have\"|\"nice-to-have\", text string, ambiguous boolean, note string|null}]; responsibilities string[];\n" +
   "process { stageCount number|null, stages [{name string, detail string|null}], assessmentAreas string[], decisionTimeline string|null };\n" +
   "benefits string[]; eligibility string[]; applicationDeadline string|null.\n" +
   "Use empty arrays for absent list fields. Never invent salaries, requirements, or stages. " +
@@ -277,8 +285,14 @@ const JOB_SCHEMA_PROMPT =
   "CLASSIFICATION RULES:\n" +
   "- requirements[] = ONLY skills, experience, qualifications, or education needed for the role. " +
   "Do NOT put work authorization, visa, sponsorship, nationality, right-to-work, or any employment gate here.\n" +
+  "- Capture concrete, verifiable requirements when the posting states them: specific technologies/languages, an availability window, years of experience/level, or required education/degree. Never reduce requirements[] to only soft competencies — include both concrete and soft items.\n" +
+  "- Requirement ambiguity: set ambiguous=true when the posting's wording makes a requirement's scope unclear " +
+  "(e.g. \"modern AI interaction paradigms\" without specifics, \"front-end ownership\" where it's unclear if it means production code " +
+  "or visual handoff, or a title that conflicts with the described level). When ambiguous, set note to a one-line rationale. " +
+  "Set ambiguous=false for clear, specific requirements.\n" +
   "- eligibility[] = hard pass/fail gates that do not depend on the person's skills or CV: right to work, " +
   "visa/sponsorship status, nationality/citizenship, minimum age, enrollment status, security-clearance requirements.\n" +
+  "Visa/sponsorship nuance: when a posting says sponsorship applies to some candidates while others need their own legal right to work (e.g. \"Skilled Worker sponsorship for those who qualify; all others require independent right to work\"), record that condition exactly in eligibility[] and add a warning flag[] — do not collapse it into unconditional \"sponsorship available\".\n" +
   "- flags[] = a heads-up that could disqualify a candidate (e.g. \"no sponsorship available\", \"must already have " +
   "the right to work\", timeline mismatch). Prefer severity \"warning\" for these; \"info\" only for genuinely neutral notes. " +
   "If a work/visa restriction is stated, put it in eligibility[] when it is an explicit requirement, AND surface the " +
@@ -369,8 +383,13 @@ async function getCachedJob(url, cvFp) {
   if (!hit) return null;
   const extraction = hit.extraction || null;
   if (!extraction) return null;
-  const fit = hit.fit && hit.cvFp === cvFp ? hit.fit : null;
-  return { extraction, fit };
+  const currentCv = hit.cvFp === cvFp;
+  return {
+    extraction,
+    // A fit result is meaningful only for the CV that produced it.
+    fit: currentCv ? hit.fit || null : null,
+    fitFallback: currentCv ? hit.fitFallback || null : null,
+  };
 }
 
 async function setCachedJob(url, cvFp, entry) {
@@ -378,9 +397,17 @@ async function setCachedJob(url, cvFp, entry) {
   const { [JOB_CACHE_KEY]: cache } = await chrome.storage.session.get([JOB_CACHE_KEY]);
   const map = cache && typeof cache === "object" ? cache : {};
   const prev = map[url] || {};
-  map[url] = { savedAt: Date.now(), cvFp: cvFp.toString(), extraction: (entry && entry.extraction) || prev.extraction, fit: (entry && entry.fit) || prev.fit };
+  map[url] = {
+    savedAt: Date.now(),
+    cvFp: cvFp.toString(),
+    extraction: (entry && entry.extraction) || prev.extraction,
+    // Explicit null clears a previous CV's result; never associate it with a
+    // new fingerprint.
+    fit: entry && Object.prototype.hasOwnProperty.call(entry, "fit") ? entry.fit : prev.fit,
+    fitFallback: entry && Object.prototype.hasOwnProperty.call(entry, "fitFallback") ? entry.fitFallback : prev.fitFallback || null,
+  };
   await chrome.storage.session.set({ [JOB_CACHE_KEY]: map });
-} 
+}
 
 async function handleExtractJob(tabId) {
   try {
@@ -389,7 +416,7 @@ async function handleExtractJob(tabId) {
     const { openrouterApiKey } = await chrome.storage.local.get(["openrouterApiKey"]);
     if (!openrouterApiKey) throw { code: "NO_API_KEY", message: "Add your OpenRouter API key in Settings first." };
     const { cvText } = await chrome.storage.local.get(["cvText"]);
-    const { model, includeCvFit } = await chrome.storage.sync.get(["model", "includeCvFit"]);
+    const { model } = await chrome.storage.sync.get(["model"]);
     const chosenModel = model || DEFAULT_MODEL;
     const hasCv = !!(cvText && cvText.trim());
     const cvFp = cvFingerprint(cvText);
@@ -398,41 +425,80 @@ async function handleExtractJob(tabId) {
     const url = tab.url || "";
 
     const cachedJob = await getCachedJob(url, cvFp);
-    if (cachedJob && cachedJob.extraction) return { ok: true, contentType: "job_posting", job: cachedJob.extraction, fit: cachedJob.fit, hasCv, extracted, confidence: cachedJob.extraction.confidence };
-
-    // Non-job heuristic → generic path (no expensive structured call).
-    if (!looksLikeJob(tab, extracted)) {
-      const summary = await runGenericSummary({ extracted, model: chosenModel, apiKey: openrouterApiKey, cvText, includeCvFit });
-      return { ok: true, contentType: "not_job_posting", summary, extracted };
+    // Reuse extraction, but never reuse or skip a fit when the CV changed.
+    if (cachedJob && cachedJob.extraction && (!hasCv || cachedJob.fit || cachedJob.fitFallback)) {
+      return { ok: true, contentType: "job_posting", job: cachedJob.extraction, fit: cachedJob.fit, fitFallback: cachedJob.fitFallback, hasCv, extracted, confidence: cachedJob.extraction.confidence };
     }
 
-    const system = buildSystemPrompt({ title: extracted.title, text: extracted.text, cvText: "" });
-    const initial = await callOpenRouter([{ role: "system", content: system }, { role: "user", content: `Extract job-posting data. ${JOB_SCHEMA_PROMPT}` }], chosenModel, openrouterApiKey);
-    let parsed = parseStructuredContent(initial);
+    let parsed = cachedJob && cachedJob.extraction ? cachedJob.extraction : null;
     if (!parsed) {
-      const retry = await callOpenRouter([{ role: "system", content: system }, { role: "user", content: `Your previous reply was not valid JSON. ${JOB_SCHEMA_PROMPT}` }], chosenModel, openrouterApiKey);
-      parsed = parseStructuredContent(retry);
+      // Non-job heuristic → generic path (no expensive structured call).
+      if (!looksLikeJob(tab, extracted)) {
+        const summary = await runGenericSummary({ extracted, model: chosenModel, apiKey: openrouterApiKey, cvText, includeCvFit: false });
+        return { ok: true, contentType: "not_job_posting", summary, extracted };
+      }
+
+      const system = buildSystemPrompt({ title: extracted.title, text: extracted.text, cvText: "" });
+      const initial = await callOpenRouter([{ role: "system", content: system }, { role: "user", content: `Extract job-posting data. ${JOB_SCHEMA_PROMPT}` }], chosenModel, openrouterApiKey);
+      parsed = parseStructuredContent(initial);
+      if (!parsed) {
+        const retry = await callOpenRouter([{ role: "system", content: system }, { role: "user", content: `Your previous reply was not valid JSON. ${JOB_SCHEMA_PROMPT}` }], chosenModel, openrouterApiKey);
+        parsed = parseStructuredContent(retry);
+      }
     }
 
     if (parsed) {
       const check = validateJobExtraction(parsed);
       if (check.ok && parsed.contentType === "job_posting") {
         parsed.sourceUrl = url;
-        let fit = null;
-        if (hasCv && includeCvFit !== false) {
-          try { const r = await handleCvFit({ job: parsed }); fit = r.ok ? r.fit : null; } catch (e) { fit = null; }
-        }
-        await setCachedJob(url, cvFp, { extraction: parsed, fit });
-        return { ok: true, contentType: "job_posting", job: parsed, fit, hasCv, extracted, confidence: parsed.confidence };
       }
     }
 
-    const summary = await runGenericSummary({ extracted, model: chosenModel, apiKey: openrouterApiKey, cvText, includeCvFit });
+    const job = parsed && validateJobExtraction(parsed).ok && parsed.contentType === "job_posting"
+      ? parsed
+      : (cachedJob && cachedJob.extraction ? cachedJob.extraction : null);
+    if (job) {
+      let fit = null;
+      let fitFallback = null;
+      if (hasCv) {
+        const result = await handleCvFit({ job });
+        if (result.ok) {
+          fit = result.fit;
+        } else {
+          // The structured job data remains valid. Preserve it and offer the
+          // established plain-text comparison rather than pretending no CV exists.
+          fitFallback = await runGenericSummary({ extracted, model: chosenModel, apiKey: openrouterApiKey, cvText, includeCvFit: true });
+        }
+      }
+      await setCachedJob(url, cvFp, { extraction: job, fit, fitFallback });
+      return { ok: true, contentType: "job_posting", job, fit, fitFallback, hasCv, extracted, confidence: job.confidence };
+    }
+
+    const summary = await runGenericSummary({ extracted, model: chosenModel, apiKey: openrouterApiKey, cvText, includeCvFit: false });
     return { ok: true, contentType: "not_job_posting", summary, extracted };
   } catch (e) {
     const err = normalizeError(e);
     return { ok: false, error: err.code, message: err.message };
   }
+}
+
+// Validate/coerce a CV-fit object. Backward compatible: older cached fits that
+// lack the newer gaps[]/reason fields remain valid (defaults are applied).
+// The model classifies gap severity; deterministic caps (see popup.js
+// fitVerdict) decide the final band.
+function normalizeFit(fit) {
+  if (!fit || typeof fit !== "object") return null;
+  if (typeof fit.fitScore !== "number" || !Array.isArray(fit.matched) || !Array.isArray(fit.missing)) return null;
+  const raw = Array.isArray(fit.gaps) ? fit.gaps : [];
+  const gaps = [];
+  raw.forEach((g) => {
+    if (!g || typeof g !== "object") return;
+    const sev = (g.severity === "blocker" || g.severity === "risk" || g.severity === "minor") ? g.severity : "minor";
+    gaps.push({ area: typeof g.area === "string" ? g.area : "", severity: sev, text: typeof g.text === "string" ? g.text : "" });
+  });
+  fit.gaps = gaps;
+  if (typeof fit.reason !== "string") fit.reason = "";
+  return fit;
 }
 
 // Phase 3 — structured CV fit consumes requirements[] directly.
@@ -446,24 +512,57 @@ async function handleCvFit(request) {
     const { model } = await chrome.storage.sync.get(["model"]);
     const chosenModel = model || DEFAULT_MODEL;
 
-    const reqText = job.requirements.map((r) => `[${r.tier}] ${r.text}`).join("\n");
-    const fitPrompt =
-      "Using ONLY the requirements list below and the USER'S CV, return a single JSON object (no prose, no code fences):\n" +
-      "{\n  \"fitScore\": 0-100,\n  \"verdict\": string,\n  \"matched\": [ { \"requirement\": string, \"why\": string } ],\n  \"missing\": [ { \"requirement\": string, \"why\": string } ]\n}\n\n" +
-      "REQUIREMENTS:\n" + reqText;
+    const role = job.role || {};
+    const proc = job.process || {};
+    const comp = job.compensation || {};
+    const reqText = (job.requirements || []).map((r) => `[${r.tier}] ${r.text}`).join("\n");
+    const eligText = (job.eligibility || []).filter(Boolean).join("\n");
+    const flagText = (job.flags || []).map((f) => (typeof f === "string" ? f : f.text) || "").filter(Boolean).join("\n");
+    const timeline = Array.isArray(proc.stages) ? proc.stages.map((s) => s.name + (s.detail ? ": " + s.detail : "")).join("\n") : "";
+    const compDisclosed = comp.min != null || comp.max != null;
 
-    const system = buildSystemPrompt({ title: job.role?.title || "", text: job.role?.title || "", cvText });
+    const context =
+      "Role: " + (role.title || "") + " at " + (role.company || "") + "\n" +
+      "Location: " + (role.location || "not stated") + " | Work arrangement: " + (role.workArrangement || "not stated") + "\n" +
+      "Application deadline: " + (job.applicationDeadline || "not stated") + " | Compensation disclosed: " + (compDisclosed ? "yes" : "no") + "\n" +
+      (timeline ? "Process/timeline:\n" + timeline + "\n" : "") +
+      "\nSTATED REQUIREMENTS:\n" + (reqText || "(none)") + "\n" +
+      "\nHARD ELIGIBILITY GATES (visa / right-to-work / etc.):\n" + (eligText || "(none)") + "\n" +
+      "\nWARNINGS / FLAGS:\n" + (flagText || "(none)");
+
+    const fitPrompt = `Assess the person's fit for the role using the structured posting data below AND the user's CV.
+Return a single JSON object (no prose, no code fences):
+{
+  "fitScore": 0-100,
+  "verdict": string,
+  "matched": [ { "requirement": string, "why": string } ],
+  "missing": [ { "requirement": string, "why": string } ],
+  "gaps": [ { "area": string, "severity": "blocker"|"risk"|"minor", "text": string } ],
+  "reason": string
+}
+
+You CLASSIFY each gap's severity only; you do NOT set the final verdict band (the system applies deterministic caps elsewhere).
+- "blocker": would prevent or materially discourage the application - e.g. availability/timing conflict, visa or work-right not satisfied, relocation required but not willing, missed hard deadline.
+- "risk": important but addressable (e.g. missing a required language, thin security/testing evidence, absent banking context).
+- "minor": small or nice-to-have misalignment.
+
+Weigh STATED REQUIREMENTS and HARD ELIGIBILITY GATES together into fitScore. If the CV clearly cannot satisfy a hard gate (schedule conflict, no work rights), that must lower the score and produce a blocker gap.
+
+POSTING STRUCTURED DATA:
+${context}
+
+Use the CV that appears in the system message.`;
+
+    const system = buildSystemPrompt({ title: role.title || "", text: role.title || "", cvText });
     const content = await callOpenRouter([{ role: "system", content: system }, { role: "user", content: fitPrompt }], chosenModel, openrouterApiKey);
     let fit = parseStructuredContent(content);
     if (!fit) {
       const retry = await callOpenRouter([{ role: "system", content: system }, { role: "user", content: `Your previous reply was not valid JSON. ${fitPrompt}` }], chosenModel, openrouterApiKey);
       fit = parseStructuredContent(retry);
     }
-    if (!fit || typeof fit !== "object" || typeof fit.fitScore !== "number" || !Array.isArray(fit.matched) || !Array.isArray(fit.missing)) {
-      throw { code: "PARSE_ERROR", message: "Couldn't parse the CV-fit result." };
-    }
-    return { ok: true, fit };
-  } catch (e) {
+    fit = normalizeFit(fit);
+    if (!fit) throw { code: "PARSE_ERROR", message: "Couldn't parse the CV-fit result." };
+    return { ok: true, fit };  } catch (e) {
     const err = normalizeError(e);
     return { ok: false, error: err.code, message: err.message };
   }
@@ -509,6 +608,120 @@ async function handleChat(request) {
   }
 }
 
+// ---- Missing-data analysis (salary estimate + recruiter questions) ---------
+// Computed on-demand by the popup and cached alongside the job extraction so a
+// revisit doesn't re-run either model call. All numbers are AI estimates and
+// are intentionally labeled as such in the UI — never sourced facts.
+async function handleMissingDataAnalysis(request) {
+  try {
+    const { job } = request;
+    if (!job || typeof job !== "object") throw { code: "BAD_REQUEST", message: "Missing job extraction." };
+    const url = job.sourceUrl || null;
+
+    // Cache hit: return the stored analysis without another model call.
+    if (url) {
+      const { [JOB_CACHE_KEY]: cache } = await chrome.storage.session.get([JOB_CACHE_KEY]);
+      const hit = cache && typeof cache === "object" ? cache[url] : null;
+      if (hit && hit.analysis) return { ok: true, data: hit.analysis };
+    }
+
+    const { openrouterApiKey } = await chrome.storage.local.get(["openrouterApiKey"]);
+    if (!openrouterApiKey) throw { code: "NO_API_KEY", message: "Add your OpenRouter API key in Settings first." };
+    const { model } = await chrome.storage.sync.get(["model"]);
+    const chosenModel = model || DEFAULT_MODEL;
+
+    const system = [
+      { role: "system", content: "You return only valid JSON, never prose or code fences. Distinguish estimates from facts: a salary band you produce is an AI estimate, not scraped data." },
+    ];
+
+    const c = job.compensation || {};
+    const salaryKnown = c.min != null || c.max != null;
+    const result = { salaryEstimate: null, gapQuestions: [] };
+
+    if (!salaryKnown) {
+      const roleDesc = JSON.stringify({
+        title: job.role && job.role.title,
+        company: job.role && job.role.company,
+        location: job.role && job.role.location,
+        workArrangement: job.role && job.role.workArrangement,
+        employmentType: job.employmentType,
+      });
+      const content = await callOpenRouter(
+        [
+          ...system,
+          { role: "user", content: "Estimate a US market base-salary band for this role.\nRole:\n" + roleDesc + "\n\nReturn ONLY JSON: {\"min\":number,\"median\":number,\"max\":number,\"currency\":\"USD\",\"period\":\"year\",\"note\":string|null}. min=25th percentile, max=75th percentile, median=50th percentile, USD/year. Set median to null if unknown.\n" },
+        ],
+        chosenModel,
+        openrouterApiKey
+      );
+      const est = parseStructuredContent(content);
+      if (est && typeof est === "object") {
+        result.salaryEstimate = {
+          min: typeof est.min === "number" ? est.min : null,
+          median: typeof est.median === "number" ? est.median : null,
+          max: typeof est.max === "number" ? est.max : null,
+          currency: est.currency || "USD",
+          period: est.period || "year",
+          note: typeof est.note === "string" ? est.note : null,
+        };
+      }
+    }
+
+    const ambiguous = (job.requirements || []).filter((r) => r.ambiguous);
+    const role = job.role || {};
+    const context = {
+      title: role.title,
+      company: role.company,
+      location: role.location,
+      workArrangement: role.workArrangement,
+      employmentType: job.employmentType,
+      missing: {
+        salary: !salaryKnown,
+        location: !role.location,
+        workArrangement: !role.workArrangement,
+        employmentType: !job.employmentType,
+        deadline: !job.applicationDeadline,
+      },
+      ambiguousRequirements: ambiguous.map((r) => ({ text: r.text, note: r.note })),
+    };
+    const qContent = await callOpenRouter(
+      [
+        ...system,
+        { role: "user", content: "Draft questions a candidate should ask a recruiter before interviewing, targeting the unstated or ambiguous fields below.\nPosting context:\n" + JSON.stringify(context) + "\n\nReturn ONLY JSON: {\"gapQuestions\":[string,...]} with 3 to 5 specific, professional questions.\n" },
+      ],
+      chosenModel,
+      openrouterApiKey
+    );
+    const parsedQ = parseStructuredContent(qContent);
+    if (parsedQ && Array.isArray(parsedQ.gapQuestions)) {
+      result.gapQuestions = parsedQ.gapQuestions.filter((x) => typeof x === "string").slice(0, 6);
+    }
+
+    if (url) {
+      const { [JOB_CACHE_KEY]: cache } = await chrome.storage.session.get([JOB_CACHE_KEY]);
+      const map = cache && typeof cache === "object" ? cache : {};
+      const prev = map[url] || {};
+      map[url] = { savedAt: Date.now(), cvFp: prev.cvFp, extraction: prev.extraction, fit: prev.fit, analysis: result };
+      await chrome.storage.session.set({ [JOB_CACHE_KEY]: map });
+    }
+    return { ok: true, data: result };
+  } catch (e) {
+    const err = normalizeError(e);
+    return { ok: false, error: err.code, message: err.message };
+  }
+}
+
+async function handleClearJobCache(request) {
+  const url = request && request.url;
+  if (!url) return { ok: true };
+  const { [JOB_CACHE_KEY]: cache } = await chrome.storage.session.get([JOB_CACHE_KEY]);
+  if (cache && typeof cache === "object" && cache[url]) {
+    delete cache[url];
+    await chrome.storage.session.set({ [JOB_CACHE_KEY]: cache });
+  }
+  return { ok: true };
+}
+
 // ---- Routing ----------------------------------------------------------------
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request && request.action === "summarize") {
@@ -521,6 +734,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   if (request && request.action === "cvFit") {
     handleCvFit(request).then(sendResponse);
+    return true;
+  }
+  if (request && request.action === "missingDataAnalysis") {
+    handleMissingDataAnalysis(request).then(sendResponse);
+    return true;
+  }
+  if (request && request.action === "clearJobCache") {
+    handleClearJobCache(request).then(sendResponse);
     return true;
   }
   if (request && request.action === "chat") {
