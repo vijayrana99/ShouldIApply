@@ -59,6 +59,8 @@ let analyzing = false;
 
 const MAX_LOCAL_HISTORY = 10;
 const SESSIONS_KEY = "summaSessions";
+// Keep in sync with background.js so old-language results are regenerated.
+const RESPONSE_LANGUAGE_VERSION = 1;
 const LEGACY_SESSION_KEY = "summaSession";
 
 const DEFAULT_CHIPS = [
@@ -134,6 +136,7 @@ async function saveSession() {
   const sessions = all && typeof all === "object" ? all : {};
   sessions[slot] = {
     savedAt: Date.now(),
+    responseLanguageVersion: RESPONSE_LANGUAGE_VERSION,
     sourceUrl: tab && tab.url ? tab.url : null,
     extracted,
     summary: els.summaryText.dataset && els.summaryText.dataset.raw ? els.summaryText.dataset.raw : "",
@@ -1236,7 +1239,7 @@ async function loadAnalysis() {
   if (!currentJob || analyzing || currentAnalysis) return;
   analyzing = true;
   setStatus("Analyzing missing data…");
-  const res = await chrome.runtime.sendMessage({ action: "missingDataAnalysis", job: currentJob });
+  const res = await chrome.runtime.sendMessage({ action: "missingDataAnalysis", job: currentJob, context: extracted });
   analyzing = false;
   if (res && res.ok && res.data) {
     currentAnalysis = res.data;
@@ -1348,7 +1351,7 @@ async function restoreSession(tabId) {
   if (!slot) return false;
   const { [SESSIONS_KEY]: all } = await chrome.storage.local.get([SESSIONS_KEY]);
   const session = all && typeof all === "object" ? all[slot] : null;
-  if (!session || !session.extracted) return false;
+  if (!session || !session.extracted || session.responseLanguageVersion !== RESPONSE_LANGUAGE_VERSION) return false;
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   // A tab ID survives navigation; never show one page's assessment on another.
   if (!tab || !session.sourceUrl || session.sourceUrl !== tab.url) return false;

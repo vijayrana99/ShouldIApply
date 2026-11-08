@@ -23,6 +23,7 @@ Configure your OpenRouter API key, choose a model, and add your CV in the extens
 - Job page + CV saved: fit-first verdict (score, band, why, gaps)
 - Job page + no CV: prompt to add your CV first
 - Generic page: plain summary (unchanged summarizer)
+- AI responses follow the article or job posting’s language, including CV comparisons and follow-up answers (for example, Nepali content produces Nepali responses).
 - Fit re-runs automatically whenever the saved CV changes (cached per URL + CV fingerprint)
 
 ## Build notes
