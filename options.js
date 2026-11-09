@@ -17,13 +17,55 @@ const formEl = document.getElementById("settings-form");
 const DEFAULT_MODEL = "deepseek/deepseek-v4-flash-0731";
 const MAX_CV_PDF_PAGES = 20; // most CVs are 1-3 pages; generous cap, not a target
 
+const placementFields = {
+  enabled: document.getElementById("placement-enabled"), earliestStart: document.getElementById("placement-earliest"),
+  latestStart: document.getElementById("placement-latest"), minWeeks: document.getElementById("placement-min-weeks"),
+  maxWeeks: document.getElementById("placement-max-weeks"), hoursPerWeek: document.getElementById("placement-hours"),
+  termTimePercent: document.getElementById("placement-percent"), remainingTimeConfirmed: document.getElementById("placement-remaining-confirmed"),
+  hoursRule: document.getElementById("placement-hours-rule"), termTimeOnly: document.getElementById("placement-term-time"),
+  latestEndDate: document.getElementById("placement-end"), returnToStudy: document.getElementById("placement-return"),
+  dissertationAlternative: document.getElementById("placement-dissertation"), computingProjectRequired: document.getElementById("placement-project"),
+  projectArea: document.getElementById("placement-area"),
+};
+const placementMessage = document.getElementById("placement-message");
+function fillPlacementProfile(raw) {
+  const profile = PlacementProfile.normalize(raw);
+  for (const [key, field] of Object.entries(placementFields)) {
+    if (field.type === "checkbox") field.checked = profile[key];
+    else field.value = profile[key] == null ? "" : profile[key];
+  }
+}
+function readPlacementProfile() {
+  return Object.fromEntries(Object.entries(placementFields).map(([key, field]) => [key,
+    field.type === "checkbox" ? field.checked : field.type === "number" ? field.value === "" ? null : Number(field.value) : field.value]));
+}
+document.getElementById("placement-import").addEventListener("change", async event => {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  try {
+    if (file.size > 10000) throw new Error("Choose a placement profile smaller than 10 KB.");
+    const profile = JSON.parse(await file.text());
+    if (!profile || typeof profile !== "object" || Array.isArray(profile)) throw new Error("Choose a valid placement-profile JSON object.");
+    const issues = PlacementProfile.errors(profile);
+    if (issues.length) throw new Error(issues.join(" "));
+    fillPlacementProfile(profile);
+    placementMessage.textContent = "Profile loaded. Review the fields, then click Save to apply it.";
+  } catch (error) {
+    placementMessage.textContent = error.message || "Could not import this profile.";
+  }
+  placementMessage.hidden = false;
+  event.target.value = "";
+});
+
 async function load() {
-  const { openrouterApiKey, cvText } = await chrome.storage.local.get([
+  const { openrouterApiKey, cvText, placementProfile } = await chrome.storage.local.get([
     "openrouterApiKey",
     "cvText",
+    "placementProfile",
   ]);
   apiKeyEl.value = openrouterApiKey || "";
   if (cvText) cvTextEl.value = cvText;
+  fillPlacementProfile(placementProfile);
 
   const { model } = await chrome.storage.sync.get(["model"]);
   modelEl.value = model || DEFAULT_MODEL;
@@ -61,13 +103,23 @@ function flashSaved() {
 
 formEl.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const placementProfile = readPlacementProfile();
+  const issues = PlacementProfile.errors(placementProfile);
+  if (issues.length) {
+    placementMessage.textContent = issues.join(" ");
+    placementMessage.hidden = false;
+    placementMessage.scrollIntoView({ block: "nearest" });
+    return;
+  }
   await chrome.storage.local.set({
+    placementProfile: PlacementProfile.normalize(placementProfile),
     openrouterApiKey: apiKeyEl.value.trim(),
     cvText: cvTextEl.value.trim(),
   });
   await chrome.storage.sync.set({
     model: modelEl.value.trim() || DEFAULT_MODEL,
   });
+  placementMessage.hidden = true;
   flashSaved();
 });
 

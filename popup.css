@@ -491,3 +491,63 @@ button.primary:hover:not(:disabled) { background: var(--primary); }
    own chrome header is already rendered — hide this panel's duplicate topbar. */
 body.embedded .topbar[data-chrome] { display: none; }
 body.embedded { border-radius: 12px; }
+
+
+/* Evidence passages and user-supplied clarifications */
+.finding-evidence { margin: 6px 0 10px; font-size: 12px; color: var(--on-surface-variant); }
+.finding-evidence summary { cursor: pointer; color: var(--primary); padding: 4px 0; }
+.finding-evidence strong { display: block; margin-top: 8px; }
+.finding-evidence blockquote { margin: 4px 0 8px; padding: 6px 10px; border-left: 3px solid var(--outline-variant); background: var(--surface-container-low); white-space: pre-wrap; overflow-wrap: anywhere; }
+.finding-evidence p { margin: 4px 0 8px; }
+.clarification-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.clarification-controls .text-action { min-height: 32px; border: 1px solid var(--outline-variant); border-radius: var(--radius); padding: 4px 8px; }
+.clarification-form, .saved-clarification { flex-basis: 100%; min-width: 0; }
+.clarification-form textarea { display: block; width: 100%; margin: 8px 0; padding: 8px; font: inherit; color: var(--on-surface); background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); border-radius: var(--radius); resize: vertical; }
+.saved-clarification { padding-top: 8px; border-top: 1px solid var(--outline-variant); overflow-wrap: anywhere; }
+.saved-clarification .text-action { margin-top: 8px; }
+
+
+/* Help remains at the top in both standalone and embedded panels. */
+.panel-actions { display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; flex: 0 0 auto; padding: 10px; }
+.panel-actions > #summarize-btn { flex: 1 1 auto; min-width: 0; width: auto; margin: 0; }
+.panel-actions > .help-trigger { flex: 0 0 auto; white-space: nowrap; }
+.help-trigger, .help-close { font: inherit; color: var(--primary); background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); border-radius: var(--radius-lg); padding: 5px 10px; font-size: 12px; }
+.help-trigger:hover, .help-close:hover { background: var(--surface-container); }
+.help-trigger:focus-visible, .help-close:focus-visible, .help-content:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.help-dialog { width: min(540px, calc(100% - 24px)); max-height: calc(100vh - 24px); padding: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-xl); background: var(--surface-container-lowest); color: var(--on-surface); box-shadow: var(--shadow); overflow: hidden; }
+.help-dialog[open] { display: flex; flex-direction: column; }
+.help-dialog::backdrop { background: rgba(15, 23, 42, 0.42); }
+.help-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; flex-shrink: 0; border-bottom: 1px solid var(--outline-variant); }
+.help-header h2 { margin: 0; font-size: 16px; line-height: 1.35; }
+.help-close { flex-shrink: 0; }
+.help-content { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px; font-size: 13px; }
+.help-content::-webkit-scrollbar { display: block; width: 8px; }
+.help-content::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: var(--radius-full); }
+.help-intro { margin: 0 0 14px; color: var(--on-surface-variant); }
+.help-terms { margin: 0; }
+.help-terms dt { margin-top: 14px; font-weight: 700; color: var(--on-surface); }
+.help-terms dt:first-child { margin-top: 0; }
+.help-terms dd { margin: 4px 0 0; color: var(--on-surface-variant); }
+.help-note { margin: 16px 0 0; padding: 10px; background: var(--surface-container-low); border-radius: var(--radius-lg); }
+
+/* Put the most consequential findings before the overall fit summary. */
+.blockers-card { border: 1px solid var(--tertiary-container); background: var(--tertiary-fixed-soft); }
+
+.clarification-feedback { flex-basis: 100%; margin: 4px 0; font-size: 12px; color: var(--on-surface-variant); overflow-wrap: anywhere; }
+
+
+/* Skills and placement have separate summaries and evidence. */
+.skill-group { margin-top: 16px; }
+.skill-group-title { margin: 0 0 8px; font-size: 14px; color: var(--on-surface); }
+.skill-finding, .placement-check { padding: 10px 0; border-top: 1px solid var(--outline-variant); }
+.skill-requirement { font-weight: 600; }
+.skill-finding .gap-row { align-items: flex-start; }
+.skill-finding .tag { white-space: normal; text-align: center; flex: 0 0 auto; max-width: 115px; }
+.tag.supported { color: var(--secondary); background: var(--secondary-soft); }
+.evidence-attribution { margin: 4px 0; font-size: 11px; color: var(--on-surface-variant); }
+.placement-card .skills-head { flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.placement-card h2 { font-size: 15px; margin: 0; }
+.placement-status { display: inline-block; padding: 2px 7px; border-radius: var(--radius); font-size: 11px; font-weight: 600; background: var(--surface-container); color: var(--on-surface-variant); }
+.placement-status.compatible { background: var(--secondary-soft); color: var(--secondary); }
+.placement-status.blocker { background: var(--tertiary-fixed); color: var(--on-tertiary-fixed); }
+.placement-status.clarify { background: var(--surface-container); }
