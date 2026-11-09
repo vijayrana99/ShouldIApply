@@ -7,6 +7,9 @@
 // ---------------------------------------------------------------------------
 
 const els = {
+  btnHelp: document.getElementById("btn-help"),
+  helpDialog: document.getElementById("help-dialog"),
+  helpClose: document.getElementById("help-close"),
   noKey: document.getElementById("no-key"),
   openSettings: document.getElementById("open-settings"),
   summarizeBtn: document.getElementById("summarize-btn"),
@@ -56,11 +59,14 @@ let currentContentType = null;
 
 // Analysis "in flight" guard so we don't double-fire missing-data calls.
 let analyzing = false;
+let fitUpdateInFlight = false;
 
 const MAX_LOCAL_HISTORY = 10;
 const SESSIONS_KEY = "summaSessions";
 // Keep in sync with background.js so old-language results are regenerated.
 const RESPONSE_LANGUAGE_VERSION = 1;
+const FIT_EVIDENCE_VERSION = 2;
+const CLARIFICATIONS_KEY = "summaFitClarifications";
 const LEGACY_SESSION_KEY = "summaSession";
 
 const DEFAULT_CHIPS = [
@@ -126,6 +132,14 @@ function hydrateIcons(root) {
 // ---------------------------------------------------------------------------
 // Session persistence (scoped per tab, survives popup close/reopen)
 // ---------------------------------------------------------------------------
+function cvFingerprint(cvText) {
+  const s = (cvText || "").trim();
+  if (!s) return "";
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0x7fffffff;
+  return String(h);
+}
+
 function sessionSlot(tabId) { return tabId == null ? null : "tab-" + tabId; }
 
 async function saveSession() {
@@ -145,6 +159,7 @@ async function saveSession() {
     job: currentJob,
     fit: currentFit,
     fitFallback: currentFitFallback,
+    placementFp: PlacementProfile.fingerprint((await chrome.storage.local.get(["placementProfile"])).placementProfile),
   };
   await chrome.storage.local.set({ [SESSIONS_KEY]: sessions });
 }
@@ -420,6 +435,9 @@ function fitVerdict(fit) {
   if (blockers > 0) {
     return { band: { label: "Needs verification", tone: "partial" }, blockerCount: blockers, riskCount: risks, capped: true };
   }
+  if (fit && fit.evidenceIncomplete) {
+    return { band: { label: "Evidence needs review", tone: "partial" }, blockerCount: 0, riskCount: risks, capped: false };
+  }
   return { band: base, blockerCount: 0, riskCount: risks, capped: false };
 }
 
@@ -430,12 +448,12 @@ function templatedFitReason(fit) {
   const risks = gaps.filter((g) => g.severity === "risk").length;
   if (blockers > 0) return blockers + " blocker" + (blockers === 1 ? "" : "s") + " to verify before applying.";
   if (risks > 0) return risks + " potential risk" + (risks === 1 ? "" : "s") + " to review below.";
-  const matched = Array.isArray(fit.matched) ? fit.matched.length : 0;
-  const missing = Array.isArray(fit.missing) ? fit.missing.length : 0;
-  const total = matched + missing;
-  if (total === 0) return "No core requirements were extracted for this posting.";
-  if (missing === 0) return "You meet all " + total + " core requirement" + (total === 1 ? "" : "s") + ".";
-  return "Missing " + missing + " of " + total + " core requirement" + (total === 1 ? "" : "s") + ".";
+  const matches = Array.isArray(fit.matched) ? fit.matched : [];
+  const direct = matches.filter(item => !item.matchLevel || item.matchLevel === "direct").length;
+  const related = matches.length - direct;
+  const missing = Array.isArray(fit.missing) ? fit.missing : [];
+  const confirmed = missing.filter(item => item.status === "confirmed_gap").length;
+  return direct + " direct match" + (direct === 1 ? "" : "es") + "; " + related + " partial/related; " + confirmed + " confirmed gap" + (confirmed === 1 ? "" : "s") + "; " + (missing.length - confirmed) + " needing more evidence.";
 }
 
 // ---------------------------------------------------------------------------
@@ -531,7 +549,9 @@ function buildRing(score, tone) {
 // Fit verdict hero + quick-facts + skills matrix rendering
 // ---------------------------------------------------------------------------
 function renderFitHero(job, fit) {
-  const vd = fitVerdict(fit);
+  // Practical conditions are shown separately; this banner describes skills.
+  const skillsOnly = { ...fit, gaps: [] };
+  const vd = fitVerdict(skillsOnly);
   const band = vd.band;
   const score = fit && typeof fit.fitScore === "number" ? fit.fitScore : null;
   const role = job.role || {};
@@ -589,7 +609,7 @@ function renderFitHero(job, fit) {
   num.textContent = score == null ? "—" : Math.round(score) + "%";
   const unit = document.createElement("span");
   unit.className = "ring-unit";
-  unit.textContent = "FIT";
+  unit.textContent = "SKILLS";
   ringLabel.appendChild(num);
   ringLabel.appendChild(unit);
   ring.appendChild(ringLabel);
@@ -609,7 +629,7 @@ function renderFitHero(job, fit) {
   const bIcon = spanHtml(icon(band.tone === "strong" ? "check_circle" : "report_problem", "icon"));
   banner.appendChild(bIcon);
   const bText = document.createElement("span");
-  bText.textContent = "Verdict: ";
+  bText.textContent = "Skills fit: ";
   const bStrong = document.createElement("strong");
   bStrong.textContent = band.label;
   bText.appendChild(bStrong);
@@ -638,7 +658,7 @@ function renderFitHero(job, fit) {
   reason.appendChild(spanHtml(icon("info", "icon")));
   const reasonText = document.createElement("span");
   // Keep the primary explanation deterministic rather than model-authored.
-  reasonText.textContent = templatedFitReason(fit || { matched: [], missing: [] });
+  reasonText.textContent = templatedFitReason(skillsOnly);
   reason.appendChild(reasonText);
   hero.appendChild(reason);
 
@@ -738,172 +758,283 @@ function renderQuickFacts(job, facts) {
 // ---------------------------------------------------------------------------
 // Skills compatibility matrix (confirmed matches vs ambiguous-in-posting)
 // ---------------------------------------------------------------------------
-function renderSkillsMatrix(job, fit) {
-  const reqs = job.requirements || [];
-  const matched = (fit && Array.isArray(fit.matched)) ? fit.matched : [];
-  const ambiguous = reqs.filter((r) => r.ambiguous);
+// Evidence uses textContent throughout: quotes and user notes are untrusted text.
+function renderEvidence(finding) {
+  const details = document.createElement("details");
+  details.className = "finding-evidence";
+  const summary = document.createElement("summary");
+  summary.textContent = "View supporting evidence";
+  details.appendChild(summary);
+  const passages = [
+    ["Job posting", finding.jobQuote, "No supporting passage could be verified in the posting."],
+    finding.placementRequirement
+      ? ["Your placement requirement", finding.placementRequirement, ""]
+      : ["Your CV", finding.cvQuote, "No supporting CV passage was found. This does not establish whether you meet the requirement."],
+  ];
+  if (finding.clarificationQuote) passages.push(["Your clarification (self-reported)", finding.clarificationQuote, ""]);
+  passages.forEach(([label, quote, empty]) => {
+    const heading = document.createElement("strong");
+    heading.textContent = label;
+    details.appendChild(heading);
+    const body = document.createElement(quote ? "blockquote" : "p");
+    body.textContent = quote || empty;
+    details.appendChild(body);
+  });
+  return details;
+}
 
-  const card = document.createElement("div");
-  card.className = "skills-card";
-  const head = document.createElement("div");
-  head.className = "skills-head";
-  const h2 = document.createElement("h2");
-  h2.textContent = "Why this score";
-  const count = document.createElement("span");
-  count.className = "skills-count";
-  count.textContent = matched.length + " of " + reqs.length + " matched";
-  head.appendChild(h2);
-  head.appendChild(count);
-  card.appendChild(head);
-
-  const intro = document.createElement("p");
-  intro.className = "skills-intro";
-  if (ambiguous.length) {
-    intro.appendChild(document.createTextNode("You match " + matched.length + " of " + reqs.length + " identified skills ("));
-    const w = document.createElement("span");
-    w.className = "warn";
-    w.textContent = ambiguous.length + " skill" + (ambiguous.length === 1 ? "" : "s") + " ambiguous";
-    intro.appendChild(w);
-    intro.appendChild(document.createTextNode(" in source text)."));
-  } else {
-    intro.appendChild(document.createTextNode("You match " + matched.length + " of " + reqs.length + " identified skills."));
+async function updateFitClarification(requirement, status, detail = "", feedback = null) {
+  if (fitUpdateInFlight || !currentJob) return false;
+  fitUpdateInFlight = true;
+  const job = currentJob;
+  const scrollTop = els.result.scrollTop;
+  const controls = Array.from(els.jobView.querySelectorAll(".clarification-controls button, .clarification-controls textarea"));
+  controls.forEach(control => { control.disabled = true; });
+  const report = message => {
+    setStatus(message);
+    if (feedback) { feedback.textContent = message; feedback.hidden = false; }
+  };
+  const reloadMessage = "Reload ShouldIApply in chrome://extensions, reopen this panel, and try again. The panel could not connect to the updated background code.";
+  let workerReady = false;
+  report("Connecting to the extension…");
+  try {
+    const capabilities = await chrome.runtime.sendMessage({ action: "getAssessmentCapabilities" });
+    if (!capabilities || !capabilities.clarifyFit || capabilities.evidenceVersion !== FIT_EVIDENCE_VERSION) {
+      report(reloadMessage);
+      return false;
+    }
+    workerReady = true;
+    report("Reassessing with your clarification… This may take up to a minute.");
+    const res = await chrome.runtime.sendMessage({ action: "clarifyFit", job, context: extracted, requirement, status, detail });
+    if (!res || !res.ok) {
+      handleError(res);
+      if (feedback) {
+        feedback.textContent = (res && res.message) || "No assessment was returned. Reload the extension and try again.";
+        feedback.hidden = false;
+      }
+      return false;
+    }
+    if (currentJob !== job) return false;
+    currentFit = res.fit;
+    currentFitFallback = null;
+    els.jobView.innerHTML = "";
+    renderJobViewInto(els.jobView, currentJob, currentFit);
+    els.result.scrollTop = scrollTop;
+    await saveSession();
+    setStatus(status === "clear" ? "Clarification removed and assessment updated." : "Clarification saved and assessment updated.");
+    return true;
+  } catch (error) {
+    const disconnected = /context invalidated|receiving end|message port|could not establish connection/i.test(error && error.message || "");
+    report(!workerReady || disconnected ? reloadMessage : "Could not update the assessment. Your text is still here; please try again.");
+    return false;
+  } finally {
+    fitUpdateInFlight = false;
+    controls.forEach(control => { control.disabled = false; });
   }
-  card.appendChild(intro);
+}
 
-  const list = document.createElement("div");
-  list.className = "skills-list";
-
-  matched.forEach((m) => {
-    const row = document.createElement("div");
-    row.className = "skill-row matched";
-    const left = document.createElement("div");
-    left.className = "left";
-    left.appendChild(spanHtml(icon("check_circle", "icon")));
-    const name = document.createElement("span");
-    name.className = "name";
-    name.textContent = m.requirement;
-    left.appendChild(name);
-    row.appendChild(left);
-    const tag = document.createElement("span");
-    tag.className = "tag";
-    tag.textContent = "Confirmed Match";
-    row.appendChild(tag);
-    list.appendChild(row);
-    if (m.why) {
-      const evidence = document.createElement("p");
-      evidence.className = "gap-why";
-      evidence.textContent = m.why;
-      list.appendChild(evidence);
+function renderClarificationControls(job, finding) {
+  if (!(job.requirements || []).some(item => item.text === finding.requirement)) return null;
+  const wrap = document.createElement("div");
+  wrap.className = "clarification-controls";
+  const have = jobEl("button", "text-action", "I have this experience");
+  have.type = "button";
+  const learn = jobEl("button", "text-action", "I need to learn this");
+  learn.type = "button";
+  wrap.appendChild(have);
+  wrap.appendChild(learn);
+  const form = document.createElement("form");
+  form.className = "clarification-form";
+  form.hidden = true;
+  const note = jobEl("p", "gap-note", "Describe a relevant project or task. This note is saved for this posting and sent with reassessments; it does not edit your CV.");
+  const input = document.createElement("textarea");
+  input.required = true;
+  input.maxLength = 2000;
+  input.rows = 2;
+  input.setAttribute("aria-label", "Your experience with " + finding.requirement);
+  const saved = (currentFit && currentFit.clarifications || []).find(item => item.requirement === finding.requirement && item.status === "has_experience");
+  input.value = saved ? saved.detail : "";
+  const submit = jobEl("button", "text-action", "Save and reassess");
+  submit.type = "submit";
+  const cancel = jobEl("button", "text-action", "Cancel");
+  cancel.type = "button";
+  form.appendChild(note);
+  form.appendChild(input);
+  form.appendChild(submit);
+  form.appendChild(cancel);
+  const feedback = jobEl("p", "clarification-feedback");
+  feedback.hidden = true;
+  feedback.setAttribute("role", "status");
+  feedback.setAttribute("aria-live", "polite");
+  have.addEventListener("click", () => { form.hidden = false; have.setAttribute("aria-expanded", "true"); input.focus(); });
+  have.setAttribute("aria-expanded", "false");
+  cancel.addEventListener("click", () => { form.hidden = true; have.setAttribute("aria-expanded", "false"); have.focus(); });
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    input.setCustomValidity(input.value.trim() ? "" : "Describe your relevant experience.");
+    if (!input.reportValidity()) return;
+    submit.textContent = "Reassessing…";
+    try {
+      await updateFitClarification(finding.requirement, "has_experience", input.value.trim(), feedback);
+    } finally {
+      submit.textContent = "Save and reassess";
     }
   });
+  input.addEventListener("input", () => input.setCustomValidity(""));
+  learn.addEventListener("click", () => updateFitClarification(finding.requirement, "needs_learning", "", feedback));
+  wrap.appendChild(form);
+  wrap.appendChild(feedback);
+  return wrap;
+}
 
-  ambiguous.forEach((r) => {
-    const row = document.createElement("div");
-    row.className = "skill-row ambiguous";
-    const body = document.createElement("div");
-    body.className = "body left";
-    const top = document.createElement("div");
-    top.className = "left";
-    top.appendChild(spanHtml(icon("question_mark", "icon")));
-    const name = document.createElement("span");
-    name.className = "name";
-    name.textContent = r.text;
-    top.appendChild(name);
-    body.appendChild(top);
-    const note = document.createElement("p");
-    note.className = "note";
-    note.textContent = r.note || "Ambiguous in the posting wording — confirm scope with the recruiter.";
-    body.appendChild(note);
-    row.appendChild(body);
-    const tag = document.createElement("span");
-    tag.className = "tag";
-    tag.textContent = "Ambiguous in Post";
-    row.appendChild(tag);
-    list.appendChild(row);
+function renderSavedClarifications(fit) {
+  if (!fit || !Array.isArray(fit.clarifications) || !fit.clarifications.length) return null;
+  const card = jobEl("section", "gap-card clarification-controls");
+  card.appendChild(jobEl("h3", "gap-title", "Your clarifications"));
+  card.appendChild(jobEl("p", "gap-note", "Saved for this posting and this version of your CV. Remove a note to reassess without it."));
+  fit.clarifications.forEach(item => {
+    const row = jobEl("div", "saved-clarification");
+    row.appendChild(jobEl("strong", "", item.requirement));
+    row.appendChild(jobEl("p", "gap-why", item.detail));
+    const remove = jobEl("button", "text-action", "Remove clarification");
+    remove.type = "button";
+    remove.setAttribute("aria-label", "Remove clarification for " + item.requirement);
+    remove.addEventListener("click", () => updateFitClarification(item.requirement, "clear"));
+    row.appendChild(remove);
+    card.appendChild(row);
   });
+  return card;
+}
 
-  if (!matched.length && !ambiguous.length) {
-    const empty = document.createElement("p");
-    empty.className = "skills-intro";
-    empty.textContent = fit ? "No requirements were extracted for this posting." : "Add your CV to see skill-by-skill compatibility.";
-    list.appendChild(empty);
+function renderSkillsMatrix(job, fit) {
+  const card = jobEl("section", "skills-card");
+  const matched = Array.isArray(fit.matched) ? fit.matched : [];
+  const missing = Array.isArray(fit.missing) ? fit.missing : [];
+  const direct = matched.filter(item => !item.matchLevel || item.matchLevel === "direct");
+  const partial = matched.length - direct.length;
+  const head = jobEl("div", "skills-head");
+  head.appendChild(jobEl("h2", "", "Your skills against this role"));
+  head.appendChild(jobEl("span", "skills-count", direct.length + " direct · " + partial + " partial/related"));
+  card.appendChild(head);
+  card.appendChild(jobEl("p", "skills-intro", "Compare what the role needs with your examples. A listed skill or related tool is weaker evidence than a relevant project or outcome."));
+  const findings = [...matched.map(item => ({ ...item, supported: true })), ...missing];
+  for (const [category, label] of [["hard", "Hard skills"], ["soft", "Soft skills"], ["other", "Other requirements"]]) {
+    const rows = findings.filter(item => (item.category || "other") === category);
+    if (category === "other" && !rows.length) continue;
+    const group = jobEl("section", "skill-group");
+    const title = jobEl("h3", "skill-group-title", label);
+    group.appendChild(title);
+    if (!rows.length) group.appendChild(jobEl("p", "gap-note", "No " + label.toLowerCase() + " requirements were identified in the posting."));
+    rows.forEach(item => {
+      const article = jobEl("article", "skill-finding");
+      const row = jobEl("div", "gap-row");
+      row.appendChild(jobEl("span", "gap-text skill-requirement", item.requirement));
+      const related = item.supported && ["partial", "transferable"].includes(item.matchLevel);
+      const status = item.supported ? related ? item.matchLevel === "transferable" ? "Related experience" : "Partial evidence" : "Direct evidence"
+        : item.status === "confirmed_gap" ? "Confirmed gap" : "Needs evidence";
+      row.appendChild(jobEl("span", "tag " + (item.supported && !related ? "supported" : "missing"), status));
+      article.appendChild(row);
+      if (item.supported) article.appendChild(jobEl("p", "evidence-attribution", item.clarificationQuote && !item.cvQuote
+        ? "Experience you added" : item.evidenceStrength === "demonstrated" ? "Concrete example in your CV" : item.evidenceStrength === "related" ? "Related experience in your CV" : "Mentioned in your CV"));
+      if (item.why) article.appendChild(jobEl("p", "gap-why", item.why));
+      const requirement = (job.requirements || []).find(r => r.text === item.requirement);
+      if (requirement && requirement.ambiguous) article.appendChild(jobEl("p", "gap-note", "Posting needs clarification: " + (requirement.note || "Confirm the scope of this requirement with the recruiter.")));
+      article.appendChild(renderEvidence(item));
+      if (!item.supported || related) {
+        const controls = renderClarificationControls(job, item);
+        if (controls) article.appendChild(controls);
+      }
+      group.appendChild(article);
+    });
+    card.appendChild(group);
   }
+  return card;
+}
 
+function placementRequirement(check, profile) {
+  if (check.key === "start") return "Permitted start: " + (profile.earliestStart || "not set") + " to " + (profile.latestStart || "not set");
+  if (check.key === "duration") return "Permitted duration: " + profile.minWeeks + "–" + profile.maxWeeks + " weeks";
+  if (check.key === "hours") return "Stated commitment: " + profile.hoursPerWeek + " hours/week" + (profile.termTimeOnly ? " during term time" : "") + "; interpretation: " + profile.hoursRule;
+  if (check.key === "academicTime") return "Workplace share of term time: " + (profile.termTimePercent ? profile.termTimePercent + "%" : "not recorded") + "; arrangements for the remaining time are not yet confirmed.";
+  if (check.key === "settings") return "Review your saved placement settings.";
+  if (check.key === "end") return "Return to academic study; latest end date: " + (profile.latestEndDate || "not yet confirmed");
+  return "A defined organisational problem relevant to " + profile.projectArea + "; any suitable sector is acceptable.";
+}
+
+function renderPlacementSuitability(fit) {
+  if (!fit.placement) return null;
+  const placement = fit.placement;
+  const card = jobEl("section", "placement-card gap-card");
+  const heading = jobEl("div", "skills-head");
+  heading.appendChild(jobEl("h2", "", "Placement suitability"));
+  const label = placement.status === "blocker" ? "Potential blocker" : placement.status === "compatible" ? "Fits recorded requirements" : "Needs clarification";
+  heading.appendChild(jobEl("span", "placement-status " + placement.status, label));
+  card.appendChild(heading);
+  card.appendChild(jobEl("p", "gap-note", "Assessed separately from your skills." + (placement.profile.dissertationAlternative ? " This placement replaces your dissertation." : "")));
+  const blockers = placement.checks.filter(check => check.status === "blocker");
+  if (blockers.length) card.appendChild(jobEl("p", "gap-note", blockers.length + " potential blocker" + (blockers.length === 1 ? " is" : "s are") + " shown at the top of this assessment."));
+  const checks = placement.checks.filter(check => check.status !== "blocker").sort((a, b) => (a.status === "clarify" ? 0 : 1) - (b.status === "clarify" ? 0 : 1));
+  checks.forEach(check => {
+    const section = jobEl("article", "placement-check");
+    const row = jobEl("div", "gap-row");
+    row.appendChild(jobEl("strong", "gap-text", check.label));
+    row.appendChild(jobEl("span", "placement-status " + check.status, check.status === "compatible" ? "Compatible" : "Clarify"));
+    section.appendChild(row);
+    section.appendChild(jobEl("p", "gap-why", check.message));
+    section.appendChild(renderEvidence({ jobQuote: check.jobQuote, placementRequirement: placementRequirement(check, placement.profile) }));
+    card.appendChild(section);
+  });
+  const settings = jobEl("button", "text-action", "Edit placement requirements");
+  settings.type = "button";
+  settings.addEventListener("click", () => chrome.runtime.openOptionsPage());
+  card.appendChild(settings);
+  return card;
+}
+
+function renderHardGap(g) {
+  const li = document.createElement("li");
+  const row = document.createElement("div");
+  row.className = "gap-row";
+  row.appendChild(spanHtml(icon(g.severity === "blocker" ? "report_problem" : "question_mark", "icon")));
+  const t = document.createElement("span");
+  t.className = "gap-text";
+  t.textContent = (g.area ? g.area + ": " : "") + g.text;
+  row.appendChild(t);
+  const tag = document.createElement("span");
+  tag.className = "tag " + g.severity;
+  tag.textContent = g.severity === "blocker" ? "Blocker" : g.severity === "risk" ? "Risk" : "Minor";
+  row.appendChild(tag);
+  li.appendChild(row);
+  if (g.status !== "confirmed_gap") li.appendChild(jobEl("p", "gap-why", "Needs verification; missing information is not a confirmed blocker."));
+  li.appendChild(renderEvidence(g));
+  return li;
+}
+
+function renderBlockers(fit) {
+  const blockers = fitGaps(fit).filter(g => g.severity === "blocker");
+  if (fit && fit.placement) fit.placement.checks.filter(check => check.status === "blocker").forEach(check => blockers.push({
+    area: check.label, text: check.message, severity: "blocker", status: "confirmed_gap",
+    jobQuote: check.jobQuote, placementRequirement: placementRequirement(check, fit.placement.profile),
+  }));
+  if (!blockers.length) return null;
+  const card = jobEl("section", "gap-card blockers-card");
+  card.appendChild(jobEl("h3", "gap-title", "⛔ " + blockers.length + (blockers.length === 1 ? " blocker" : " blockers") + " to review first"));
+  const list = jobEl("ul", "gap-list");
+  blockers.forEach(g => list.appendChild(renderHardGap(g)));
   card.appendChild(list);
   return card;
 }
 
 function renderGaps(job, fit) {
-  if (!fit) return null; // no CV fitted -> the cv-onboard prompt covers this
-  const missing = Array.isArray(fit.missing) ? fit.missing : [];
-  const hard = fitGaps(fit);
-
-  const card = document.createElement("div");
-  card.className = "gap-card";
-  const h = document.createElement("h3");
-  h.className = "gap-title";
-  h.textContent = "Gaps vs your CV";
-  card.appendChild(h);
-
-  if (!missing.length && !hard.length) {
-    const p = document.createElement("p");
-    p.className = "gap-none";
-    p.textContent = "You cover every listed requirement and hard gate on this posting — no gaps found.";
-    card.appendChild(p);
-    return card;
-  }
-
-  const ul = document.createElement("ul");
-  ul.className = "gap-list";
-
-  // Requirement-level gaps (from the CV-fit missing[]).
-  missing.forEach((m) => {
-    const li = document.createElement("li");
-    const row = document.createElement("div");
-    row.className = "gap-row";
-    row.appendChild(spanHtml(icon("question_mark", "icon")));
-    const t = document.createElement("span");
-    t.className = "gap-text";
-    t.textContent = m.requirement;
-    row.appendChild(t);
-    const tag = document.createElement("span");
-    tag.className = "tag missing";
-    tag.textContent = "Missing";
-    row.appendChild(tag);
-    li.appendChild(row);
-    if (m.why) {
-      const why = document.createElement("p");
-      why.className = "gap-why";
-      why.textContent = m.why;
-      li.appendChild(why);
-    }
-    ul.appendChild(li);
-  });
-
-  // Hard-criteria gaps (model-classified severity: blocker/risk/minor).
-  hard.forEach((g) => {
-    const li = document.createElement("li");
-    const row = document.createElement("div");
-    row.className = "gap-row";
-    row.appendChild(spanHtml(icon(g.severity === "blocker" ? "report_problem" : "question_mark", "icon")));
-    const t = document.createElement("span");
-    t.className = "gap-text";
-    t.textContent = (g.area ? g.area + ": " : "") + g.text;
-    row.appendChild(t);
-    const tag = document.createElement("span");
-    tag.className = "tag " + g.severity;
-    tag.textContent = g.severity === "blocker" ? "Blocker" : g.severity === "risk" ? "Risk" : "Minor";
-    row.appendChild(tag);
-    li.appendChild(row);
-    ul.appendChild(li);
-  });
-
-  card.appendChild(ul);
-
-  const note = document.createElement("p");
-  note.className = "gap-note";
-  note.textContent = "Requirement gaps come from the CV match; hard-criteria gaps (severity) come from eligibility, timing, visa or relocation. Ask a follow-up for a deeper plan.";
-  card.appendChild(note);
+  if (!fit) return null;
+  const concerns = fitGaps(fit).filter(g => g.severity !== "blocker");
+  if (!concerns.length) return null;
+  const card = jobEl("section", "gap-card");
+  card.appendChild(jobEl("h3", "gap-title", "Other practical conditions to clarify"));
+  const list = jobEl("ul", "gap-list");
+  concerns.forEach(g => list.appendChild(renderHardGap(g)));
+  card.appendChild(list);
+  card.appendChild(jobEl("p", "gap-note", "Practical conditions are separate from your skills. Missing information needs verification; it is not a confirmed blocker."));
   return card;
 }
 
@@ -1205,7 +1336,11 @@ function renderJobViewInto(root, job, fit) {
     return;
   }
   if (fit) {
+    const blockers = renderBlockers(fit);
+    if (blockers) root.appendChild(blockers);
     root.appendChild(renderFitHero(job, fit));
+    const placement = renderPlacementSuitability(fit);
+    if (placement) root.appendChild(placement);
   }
   const flags = renderFlags(job);
   if (flags) root.appendChild(flags);
@@ -1213,6 +1348,8 @@ function renderJobViewInto(root, job, fit) {
     root.appendChild(renderSkillsMatrix(job, fit));
     const gaps = renderGaps(job, fit);
     if (gaps) root.appendChild(gaps);
+    const clarifications = renderSavedClarifications(fit);
+    if (clarifications) root.appendChild(clarifications);
   } else {
     root.appendChild(renderFitFallback(currentFitFallback));
   }
@@ -1251,6 +1388,7 @@ async function loadAnalysis() {
 }
 
 async function summarize() {
+  if (fitUpdateInFlight) return;
   if (currentTabId == null) { showTabClosedNotice(); return; }
   els.summarizeBtn.disabled = true;
   setStatus("Checking if this job is right for you…");
@@ -1294,6 +1432,7 @@ async function summarize() {
 }
 
 async function reanalyze() {
+  if (fitUpdateInFlight) return;
   if (!currentJob) return;
   await chrome.runtime.sendMessage({ action: "clearJobCache", url: currentJob.sourceUrl });
   await newSummary();
@@ -1326,7 +1465,7 @@ async function askChat(question) {
   addMessage("user", q);
   setChatStatus("Thinking…");
   try {
-    const res = await chrome.runtime.sendMessage({ action: "chat", context: extracted, history, question: q });
+    const res = await chrome.runtime.sendMessage({ action: "chat", context: extracted, sourceUrl: currentJob && currentJob.sourceUrl, history, question: q });
     if (res && res.ok) {
       addMessage("assistant", res.answer);
       history.push({ role: "user", content: q });
@@ -1352,6 +1491,19 @@ async function restoreSession(tabId) {
   const { [SESSIONS_KEY]: all } = await chrome.storage.local.get([SESSIONS_KEY]);
   const session = all && typeof all === "object" ? all[slot] : null;
   if (!session || !session.extracted || session.responseLanguageVersion !== RESPONSE_LANGUAGE_VERSION) return false;
+  if (session.contentType === "job_posting") {
+    const { placementProfile } = await chrome.storage.local.get(["placementProfile"]);
+    if (session.placementFp !== PlacementProfile.fingerprint(placementProfile)) return false;
+  }
+  if (session.fit) {
+    if (session.fit.evidenceVersion !== FIT_EVIDENCE_VERSION) return false;
+    const stored = await chrome.storage.local.get(["cvText", CLARIFICATIONS_KEY, "placementProfile"]);
+    const cvFp = cvFingerprint(stored.cvText);
+    if (session.fit.cvFp !== cvFp || session.fit.placementFp !== PlacementProfile.fingerprint(stored.placementProfile)) return false;
+    const entry = stored[CLARIFICATIONS_KEY] && stored[CLARIFICATIONS_KEY][session.sourceUrl];
+    const revision = entry && entry.cvFp === cvFp ? entry.revision : 0;
+    if (session.fit.clarificationRevision !== revision) return false;
+  }
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   // A tab ID survives navigation; never show one page's assessment on another.
   if (!tab || !session.sourceUrl || session.sourceUrl !== tab.url) return false;
@@ -1406,6 +1558,19 @@ function init() {
   if (window.top && window.top !== window) document.body.classList.add("embedded");
   hydrateIcons(document);
 
+  els.btnHelp.addEventListener("click", () => {
+    if (els.helpDialog.open) return;
+    els.helpDialog.showModal();
+    els.helpDialog.querySelector(".help-content").scrollTop = 0;
+  });
+  els.helpClose.addEventListener("click", () => els.helpDialog.close());
+  els.helpDialog.addEventListener("click", (event) => {
+    if (event.target !== els.helpDialog) return;
+    const bounds = els.helpDialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right ||
+        event.clientY < bounds.top || event.clientY > bounds.bottom) els.helpDialog.close();
+  });
+
   els.btnClose.addEventListener("click", () => window.close());
   els.btnPin.addEventListener("click", () => {
     const on = els.btnPin.getAttribute("aria-pressed") === "true";
@@ -1430,6 +1595,7 @@ function init() {
   els.chatSend.addEventListener("click", () => askChat());
   els.chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") askChat(); });
   document.addEventListener("keydown", (e) => {
+    if (els.helpDialog.open) return; // Native dialog handles Escape; leave the chat underneath alone.
     if (e.key === "Escape" && !els.chatDrawer.hidden) closeChat();
   });
   els.btnChecklist.addEventListener("click", reanalyze);

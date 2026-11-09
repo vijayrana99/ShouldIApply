@@ -127,3 +127,12 @@ h1 {
 a {
   color: var(--accent);
 }
+.placement-settings { margin: 24px 0; padding: 16px; border: 1px solid var(--border); border-radius: 8px; }
+.placement-settings legend { font-size: 17px; font-weight: 700; padding: 0 6px; }
+.placement-settings .checkbox-field { margin: 12px 0; font-size: 14px; align-items: flex-start; }
+.placement-settings .checkbox-field input { margin-top: 3px; }
+.placement-settings .hint { margin-bottom: 12px; }
+.settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.field input[type="date"], .field input[type="number"], .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; background: var(--bg); color: var(--fg); }
+.settings-message { font-size: 13px; color: var(--fg); background: #eff6ff; padding: 10px; border-radius: 6px; }
+@media (max-width: 480px) { body { padding: 12px; } .settings { padding: 16px; } .settings-grid { grid-template-columns: 1fr; } }

@@ -33,13 +33,65 @@
       </div>
     </header>
 
+    <!-- Kept outside the topbar so help also stays visible in the overlay iframe. -->
+    <div class="panel-actions">
+      <button id="summarize-btn" type="button" class="primary">Is this job right for me?</button>
+      <button type="button" id="btn-help" class="help-trigger" aria-haspopup="dialog" aria-controls="help-dialog">? Help</button>
+    </div>
+
+    <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
+      <div class="help-header">
+        <h2 id="help-title">Understanding your assessment</h2>
+        <button type="button" id="help-close" class="help-close" aria-label="Close help" autofocus>Close ×</button>
+      </div>
+      <div class="help-content" tabindex="0" role="region" aria-label="Assessment label guide">
+        <p class="help-intro">Use these labels to understand the findings and decide what to check next. The fit score is an estimate, not your chance of getting hired.</p>
+        <dl class="help-terms">
+          <dt>⛔ 1 blocker</dt>
+          <dd>One potentially disqualifying mismatch with a mandatory condition was identified. Open its evidence and verify the details before deciding.</dd>
+          <dt>Warning</dt>
+          <dd>An important condition in the posting, such as “visa sponsorship is unavailable.” It does not automatically mean you are ineligible.</dd>
+          <dt>Info</dt>
+          <dd>A neutral note from the posting, rather than a problem with your fit.</dd>
+          <dt>6 of 8 matched</dt>
+          <dd>Supporting evidence was found for six of eight extracted requirements. The remaining two may be gaps or simply absent from your CV. This is not a hiring probability.</dd>
+          <dt>Direct evidence / CV evidence found</dt>
+          <dd>A supporting passage was found in your CV. Open the evidence to check whether it supports the assessment.</dd>
+          <dt>Experience you added / self-reported experience</dt>
+          <dd>The finding uses experience you added through “I have this experience,” rather than a passage in your saved CV. Your clarification is shown separately.</dd>
+          <dt>Ambiguous in Post</dt>
+          <dd>The employer’s wording is unclear—for example, “strong technical background” without specific skills. Ask the recruiter to clarify.</dd>
+          <dt>Blocker</dt>
+          <dd>A potentially disqualifying mismatch with a mandatory requirement. Missing information alone should not count as a proven blocker.</dd>
+          <dt>Risk</dt>
+          <dd>An important concern that may need clarification or could be addressed.</dd>
+          <dt>Minor</dt>
+          <dd>A smaller mismatch, usually involving a desirable rather than essential qualification.</dd>
+          <dt>Not evidenced in CV</dt>
+          <dd>Your CV does not establish that you meet the requirement. This does not mean you lack the skill. Choose “I have this experience” to add relevant details and reassess.</dd>
+          <dt>Confirmed gap</dt>
+          <dd>The assessment found explicit evidence that a requirement is not met, or you selected “I need to learn this.” Review the evidence to check the finding.</dd>
+          <dt>View supporting evidence</dt>
+          <dd>Expands the relevant job-posting quote, CV quote, and any clarification you supplied. Quotes are checked against the supplied text and kept in their original language. If a supporting passage cannot be verified, the panel says so.</dd>
+          <dt>Hard skills and soft skills</dt>
+          <dd>Hard skills cover tools, technologies and methods. Soft skills cover behaviours such as communication, collaboration and problem-solving. A concrete example is stronger evidence than a generic self-description.</dd>
+          <dt>Partial evidence / related experience</dt>
+          <dd>Some relevant experience was found, but it does not fully establish the exact requirement. Experience with a related tool is not automatically a direct match.</dd>
+          <dt>Placement suitability</dt>
+          <dd>Checks your saved dates, duration, hours, return to study and computing-project needs separately from the skills score. Only an evidenced, non-negotiable conflict is shown as a potential blocker. Missing details need clarification.</dd>
+          <dt>Evidence needs review</dt>
+          <dd>Some findings could not be supported, or requirements were left unassessed. Review the evidence and clarify what is missing before relying on the score.</dd>
+        </dl>
+        <p class="help-note">Your clarifications are saved for this posting and CV version. You can remove them and reassess; they do not edit your original CV.</p>
+      </div>
+    </dialog>
+
     <!-- No API key notice -->
     <section id="no-key" class="notice" hidden>
       <p>Add your OpenRouter API key to get started.</p>
       <button id="open-settings" type="button" class="link">Open Settings</button>
     </section>
 
-    <button id="summarize-btn" type="button" class="primary">Is this job right for me?</button>
     <p id="status" class="status" role="status" aria-live="polite" hidden></p>
 
     <!-- Results: generic summary (renderSummary) OR job view (fit-first) -->
@@ -53,7 +105,7 @@
       <div class="footer-buttons">
         <button type="button" id="btn-checklist" class="primary-cta">
           <span data-icon="refresh"></span>
-          <span>Refresh with updated CV</span>
+          <span>Refresh assessment</span>
         </button>
         <button type="button" id="btn-copy" class="secondary-cta" title="Copy gap prompts to clipboard" hidden>
           <span data-icon="content_copy"></span>
@@ -123,6 +175,7 @@
       </div>
     </div>
 
+    <script src="placement.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

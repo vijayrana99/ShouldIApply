@@ -61,3 +61,7 @@ secrets/
 
 # Logs can contain page text, model responses, or credentials
 *.log
+
+# Personal placement and clarification exports
+/placement-profile*.json
+/summaFitClarifications*.json

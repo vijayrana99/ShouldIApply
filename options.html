@@ -53,6 +53,31 @@
         the CV field in Settings to stop sending it.
       </small>
 
+      <fieldset class="placement-settings">
+        <legend>My placement requirements</legend>
+        <label class="checkbox-field"><input id="placement-enabled" type="checkbox" /> Assess placement suitability alongside my skills</label>
+        <p class="hint">Stored locally. When enabled, these requirements are sent with job assessments and job follow-up questions. Edit them here without changing your CV. Save, then refresh or reopen the assessment to apply changes.</p>
+        <label class="field"><span>Import a placement profile (optional)</span><input id="placement-import" type="file" accept=".json,application/json" /></label>
+        <div class="settings-grid">
+          <label class="field"><span>Earliest start</span><input id="placement-earliest" type="date" /></label>
+          <label class="field"><span>Latest start</span><input id="placement-latest" type="date" /></label>
+          <label class="field"><span>Minimum duration (weeks)</span><input id="placement-min-weeks" type="number" min="1" max="104" step="1" required /></label>
+          <label class="field"><span>Maximum duration (weeks)</span><input id="placement-max-weeks" type="number" min="1" max="104" step="1" required /></label>
+          <label class="field"><span>Stated hours per week</span><input id="placement-hours" type="number" min="0.5" max="80" step="0.5" required /></label>
+          <label class="field"><span>How to interpret those hours</span><select id="placement-hours-rule"><option value="unconfirmed">Needs university clarification</option><option value="minimum">Minimum commitment</option><option value="maximum">Maximum commitment</option><option value="fixed">Fixed commitment</option></select></label>
+        </div>
+        <label class="field"><span>Workplace share of term time (%) — optional</span><input id="placement-percent" type="number" min="0.5" max="100" step="0.5" /><small class="hint">Record the university's stated percentage without inferring a full-time working week from it.</small></label>
+        <label class="checkbox-field"><input id="placement-term-time" type="checkbox" /> Hours apply during term time</label>
+        <small class="hint">An unresolved hours rule remains a question to clarify, even if the advertised hours differ. Arrangements for the remaining academic time must be confirmed separately.</small>
+        <label class="checkbox-field"><input id="placement-remaining-confirmed" type="checkbox" /> My university has confirmed arrangements for the remaining academic time</label>
+        <label class="field"><span>Latest permitted end date (optional)</span><input id="placement-end" type="date" /><small class="hint">Leave blank if the university has not confirmed it. We will not invent a return-to-study deadline.</small></label>
+        <label class="checkbox-field"><input id="placement-return" type="checkbox" /> I will return to academic study after the placement</label>
+        <label class="checkbox-field"><input id="placement-dissertation" type="checkbox" /> This placement replaces my dissertation</label>
+        <label class="checkbox-field"><input id="placement-project" type="checkbox" /> A defined organisational problem and computing-related project are required</label>
+        <label class="field"><span>Relevant academic area</span><input id="placement-area" type="text" maxlength="100" /><small class="hint">Any suitable employer sector is acceptable. The actual project and duties determine relevance.</small></label>
+        <p id="placement-message" class="settings-message" role="status" aria-live="polite" hidden></p>
+      </fieldset>
+
       <div class="actions">
         <button type="submit" id="save-btn">Save</button>
         <span id="saved-notice" class="saved" hidden>Saved ✓</span>
@@ -60,6 +85,7 @@
     </form>
 
     <script src="lib/pdf.min.js"></script>
+    <script src="placement.js"></script>
     <script src="options.js"></script>
   </body>
 </html>
