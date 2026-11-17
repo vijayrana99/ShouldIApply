@@ -7,7 +7,7 @@
     enabled: false, earliestStart: "", latestStart: "", minWeeks: 30, maxWeeks: 34,
     hoursPerWeek: 28, hoursRule: "unconfirmed", termTimeOnly: true, termTimePercent: null, remainingTimeConfirmed: false,
     latestEndDate: "", returnToStudy: true, dissertationAlternative: true,
-    computingProjectRequired: true, projectArea: "Computer Science",
+    computingProjectRequired: true, projectArea: "Computer Science", courseStructure: "",
   });
   const date = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
     Number.isFinite(Date.parse(value + "T00:00:00Z")) && new Date(value + "T00:00:00Z").toISOString().slice(0, 10) === value ? value : "";
@@ -23,6 +23,7 @@
       termTimeOnly: raw.termTimeOnly !== false, termTimePercent: number(raw.termTimePercent, null), remainingTimeConfirmed: raw.remainingTimeConfirmed === true, latestEndDate: date(raw.latestEndDate),
       returnToStudy: raw.returnToStudy !== false, dissertationAlternative: raw.dissertationAlternative !== false,
       computingProjectRequired: raw.computingProjectRequired !== false,
+      courseStructure: typeof raw.courseStructure === "string" ? raw.courseStructure.trim().slice(0, 2000) : "",
       projectArea: typeof raw.projectArea === "string" && raw.projectArea.trim() ? raw.projectArea.trim().slice(0, 100) : defaults.projectArea,
     };
   }

@@ -18,6 +18,7 @@ const DEFAULT_MODEL = "deepseek/deepseek-v4-flash-0731";
 const MAX_CV_PDF_PAGES = 20; // most CVs are 1-3 pages; generous cap, not a target
 
 const placementFields = {
+  courseStructure: document.getElementById("placement-course-structure"),
   enabled: document.getElementById("placement-enabled"), earliestStart: document.getElementById("placement-earliest"),
   latestStart: document.getElementById("placement-latest"), minWeeks: document.getElementById("placement-min-weeks"),
   maxWeeks: document.getElementById("placement-max-weeks"), hoursPerWeek: document.getElementById("placement-hours"),

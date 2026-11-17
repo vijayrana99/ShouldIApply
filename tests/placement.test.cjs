@@ -101,7 +101,7 @@ test('editing placement requirements invalidates cached fits and saved panel ses
   const result = await h.context.handleCvFit({ job, context: { ...extracted, text: source } });
   await h.context.setCachedJob(url, result.fit.cvFp, { extraction: job, fit: result.fit });
   assert.ok((await h.context.getCachedJob(url, result.fit.cvFp)).fit);
-  h.local.summaSessions = { 'tab-1': { extracted, sourceUrl: url, contentType: 'job_posting', responseLanguageVersion: 1, placementFp: result.fit.placementFp, fit: result.fit } };
+  h.local.summaSessions = { 'tab-1': { extracted, sourceUrl: url, contentType: 'job_posting', responseLanguageVersion: 2, placementFp: result.fit.placementFp, fit: result.fit } };
   h.local.placementProfile = { ...profile, maxWeeks: 33 };
   assert.equal((await h.context.getCachedJob(url, result.fit.cvFp)).fit, null);
   assert.equal(await loadPopup(h).restoreSession(1), false);
@@ -135,4 +135,20 @@ test('related hard-skill experience is not labelled a direct match', () => {
   const hard = { ...job, requirements: [{ text: 'React', category: 'hard' }] };
   const result = h.context.normalizeFit({ ...fit, gaps: [], missing: [], matched: [{ requirement: 'React', category: 'hard', evidenceStrength: 'related', matchLevel: 'direct', jobQuote: 'React', cvQuote: 'Built Vue applications' }] }, { job: hard, sourceText: 'React', cvText: 'Built Vue applications' });
   assert.equal(result.matched[0].matchLevel, 'transferable');
+});
+
+
+test('academic-year policy distinguishes a taught year plus placement from two taught years', async () => {
+  const courseStructure = 'One taught MSc year from October 2026, followed by an integrated placement year in 2027. Placement replaces the dissertation.';
+  const h = harness([fit, 'Answer'], { local: { placementProfile: { ...profile, courseStructure } } });
+  const result = await h.context.handleCvFit({ job, context: extracted });
+  assert.equal(result.ok, true);
+  const assessment = h.requests[0].messages;
+  assert.match(assessment[0].content, /Never infer a penultimate-year mismatch solely from enrolment and graduation/);
+  assert.match(assessment[0].content, /must not be treated as two taught academic years/);
+  assert.ok(assessment[1].content.includes(courseStructure));
+  await h.context.handleChat({ context: extracted, sourceUrl: url, question: 'Am I eligible as a penultimate-year student?', history: [] });
+  assert.ok(h.requests[1].messages[0].content.includes(courseStructure));
+  assert.match(h.requests[1].messages[0].content, /full academic year AFTER the placement/);
+  assert.notEqual(h.context.PlacementProfile.fingerprint(profile), h.context.PlacementProfile.fingerprint({ ...profile, courseStructure }));
 });

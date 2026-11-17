@@ -24,7 +24,6 @@ const els = {
   footFlags: document.getElementById("foot-flags"),
   footFlagsText: document.getElementById("foot-flags-text"),
   linkReanalyze: document.getElementById("link-reanalyze"),
-  linkChat: document.getElementById("link-chat"),
 
   btnSettings: document.getElementById("btn-settings"),
   btnChat: document.getElementById("btn-chat"),
@@ -33,10 +32,9 @@ const els = {
   btnClose: document.getElementById("btn-close"),
 
   chatDrawer: document.getElementById("chat-drawer"),
-  chatBack: document.getElementById("chat-back"),
-  chatClose: document.getElementById("chat-close"),
   chips: document.getElementById("chips"),
   chatLog: document.getElementById("chat-log"),
+  chatForm: document.getElementById("chat-form"),
   chatInput: document.getElementById("chat-input"),
   chatSend: document.getElementById("chat-send"),
   chatStatus: document.getElementById("chat-status"),
@@ -64,19 +62,19 @@ let fitUpdateInFlight = false;
 const MAX_LOCAL_HISTORY = 10;
 const SESSIONS_KEY = "summaSessions";
 // Keep in sync with background.js so old-language results are regenerated.
-const RESPONSE_LANGUAGE_VERSION = 1;
+const RESPONSE_LANGUAGE_VERSION = 2;
 const FIT_EVIDENCE_VERSION = 2;
 const CLARIFICATIONS_KEY = "summaFitClarifications";
 const LEGACY_SESSION_KEY = "summaSession";
 
 const DEFAULT_CHIPS = [
+  { label: "What are the gaps against my CV?", question: "What are the gaps between my CV and this job posting?" },
   { label: "What skills or qualifications are required?", question: "What skills or qualifications are required?" },
   { label: "What are the main responsibilities?", question: "What are the main responsibilities?" },
   { label: "What benefits or perks are offered?", question: "What benefits or perks are offered?" },
   { label: "What are the key takeaways?", question: "What are the 3–5 most important key takeaways from this content?" },
   { label: "Summarize this in one paragraph", question: "Summarize the entire content in a single concise paragraph." },
   { label: "What are the pros and cons?", question: "What are the main pros and cons discussed in this content?" },
-  { label: "What are the gaps against my CV?", question: "What are the gaps between my CV and this job posting?" },
   { label: "What's missing or unclear?", question: "What important information is missing or unclear in this content?" },
 ];
 const CV_CHIP = { label: "Is this a good fit for my CV?", question: "Is this a good fit for my CV? What am I missing?" };
@@ -335,9 +333,8 @@ function addMessage(role, content) {
     div.appendChild(body);
   }
   els.chatLog.appendChild(div);
-  const scroller = els.chatLog.closest ? els.chatLog.closest(".chat-scroll") : null;
-  const sc = scroller || els.chatLog;
-  sc.scrollTop = sc.scrollHeight;
+  // Keep the new message in view within the analysis scroller.
+  div.scrollIntoView({ block: "nearest" });
 }
 
 function setChatBusy(busy) {
@@ -362,13 +359,10 @@ async function renderChips() {
 }
 
 function openChat() {
-  els.chatDrawer.hidden = false;
-  const sc = els.chatDrawer.querySelector(".chat-scroll");
-  if (sc) sc.scrollTop = sc.scrollHeight;
-  els.chatInput.focus();
+  if (els.result.hidden) return;
+  els.chatDrawer.scrollIntoView({ block: "start", behavior: "smooth" });
+  els.chatInput.focus({ preventScroll: true });
 }
-function closeChat() { els.chatDrawer.hidden = true; }
-function toggleChat() { if (els.chatDrawer.hidden) { openChat(); } else { closeChat(); } }
 
 // ---------------------------------------------------------------------------
 // Generic DOM helpers for building job view
@@ -1421,7 +1415,6 @@ async function summarize() {
     }
 
     els.chatLog.innerHTML = "";
-    els.chatDrawer.hidden = true;
     els.result.hidden = false;
     setStatus("");
     await renderChips();
@@ -1473,10 +1466,13 @@ async function askChat(question) {
       if (history.length > MAX_LOCAL_HISTORY) history = history.slice(history.length - MAX_LOCAL_HISTORY);
       await saveSession();
     } else {
-      handleError(res);
+      setChatStatus((res && res.message) || "Could not send your question. Please try again.");
+      return;
     }
-  } finally {
     setChatStatus("");
+  } catch (error) {
+    setChatStatus("Could not send your question. Please try again.");
+  } finally {
     chatInFlight = false;
     setChatBusy(false);
   }
@@ -1585,18 +1581,13 @@ function init() {
     persistUiState();
   });
   els.btnSettings.addEventListener("click", () => chrome.runtime.openOptionsPage());
-  els.btnChat.addEventListener("click", toggleChat);
-  els.linkChat.addEventListener("click", toggleChat);
-  els.chatBack.addEventListener("click", closeChat);
-  els.chatClose.addEventListener("click", closeChat);
+  els.btnChat.addEventListener("click", openChat);
 
   els.summarizeBtn.addEventListener("click", summarize);
   els.openSettings.addEventListener("click", () => chrome.runtime.openOptionsPage());
-  els.chatSend.addEventListener("click", () => askChat());
-  els.chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") askChat(); });
-  document.addEventListener("keydown", (e) => {
-    if (els.helpDialog.open) return; // Native dialog handles Escape; leave the chat underneath alone.
-    if (e.key === "Escape" && !els.chatDrawer.hidden) closeChat();
+  els.chatForm.addEventListener("submit", event => {
+    event.preventDefault();
+    askChat();
   });
   els.btnChecklist.addEventListener("click", reanalyze);
   els.checklistClose.addEventListener("click", closeChecklist);
