@@ -532,3 +532,5 @@ body.embedded { border-radius: 12px; }
 .placement-status.compatible { background: var(--secondary-soft); color: var(--secondary); }
 .placement-status.blocker { background: var(--tertiary-fixed); color: var(--on-tertiary-fixed); }
 .placement-status.clarify { background: var(--surface-container); }
+
+.essential-card { border: 1px solid var(--tertiary); background: var(--tertiary-fixed-soft); }

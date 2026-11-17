@@ -91,7 +91,7 @@ test('old job and fit cache entries are regenerated', async () => {
   const result = await h.context.handleExtractJob(1);
   assert.equal(result.ok, true);
   assert.equal(h.requests.length, 2);
-  assert.equal(h.session.summaJobCache[url].responseLanguageVersion, 2);
+  assert.equal(h.session.summaJobCache[url].responseLanguageVersion, 3);
 });
 
 test('refreshing old missing-data analysis cannot revalidate an old-language fit', async () => {
@@ -120,7 +120,7 @@ test('popup rejects legacy sessions and restores newly saved source-language ses
   popup.testSource = extracted;
   vm.runInContext('currentTabId = 1; extracted = testSource; els.summaryText.dataset.raw = "नेपाली सारांश";', popup);
   await popup.saveSession();
-  assert.equal(h.local.summaSessions['tab-1'].responseLanguageVersion, 2);
+  assert.equal(h.local.summaSessions['tab-1'].responseLanguageVersion, 3);
   popup.rendered = null;
   vm.runInContext('renderSummary = text => { rendered = text; }; renderChips = async () => {};', popup);
   assert.equal(await popup.restoreSession(1), true);

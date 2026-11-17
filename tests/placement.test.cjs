@@ -101,7 +101,7 @@ test('editing placement requirements invalidates cached fits and saved panel ses
   const result = await h.context.handleCvFit({ job, context: { ...extracted, text: source } });
   await h.context.setCachedJob(url, result.fit.cvFp, { extraction: job, fit: result.fit });
   assert.ok((await h.context.getCachedJob(url, result.fit.cvFp)).fit);
-  h.local.summaSessions = { 'tab-1': { extracted, sourceUrl: url, contentType: 'job_posting', responseLanguageVersion: 2, placementFp: result.fit.placementFp, fit: result.fit } };
+  h.local.summaSessions = { 'tab-1': { extracted, sourceUrl: url, contentType: 'job_posting', responseLanguageVersion: 3, placementFp: result.fit.placementFp, fit: result.fit } };
   h.local.placementProfile = { ...profile, maxWeeks: 33 };
   assert.equal((await h.context.getCachedJob(url, result.fit.cvFp)).fit, null);
   assert.equal(await loadPopup(h).restoreSession(1), false);

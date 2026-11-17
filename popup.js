@@ -62,7 +62,7 @@ let fitUpdateInFlight = false;
 const MAX_LOCAL_HISTORY = 10;
 const SESSIONS_KEY = "summaSessions";
 // Keep in sync with background.js so old-language results are regenerated.
-const RESPONSE_LANGUAGE_VERSION = 2;
+const RESPONSE_LANGUAGE_VERSION = 3;
 const FIT_EVIDENCE_VERSION = 2;
 const CLARIFICATIONS_KEY = "summaFitClarifications";
 const LEGACY_SESSION_KEY = "summaSession";
@@ -1004,11 +1004,41 @@ function renderHardGap(g) {
   return li;
 }
 
-function renderBlockers(fit) {
+function essentialFindings(job, fit) {
+  const required = new Set((job.requirements || []).filter(item => item.tier === "must-have").map(item => item.text));
+  const missing = (fit.missing || []).filter(item => required.has(item.requirement));
+  const partial = (fit.matched || []).filter(item => required.has(item.requirement) && ["partial", "transferable"].includes(item.matchLevel));
+  return { confirmed: missing.filter(item => item.status === "confirmed_gap"),
+    unverified: [...missing.filter(item => item.status !== "confirmed_gap"), ...partial] };
+}
+
+function renderEssentialRequirements(job, fit) {
+  const { unverified } = essentialFindings(job, fit);
+  if (!unverified.length) return null;
+  const card = jobEl("section", "gap-card essential-card");
+  card.appendChild(jobEl("h3", "gap-title", "Essential requirements to verify"));
+  card.appendChild(jobEl("p", "gap-note", "These required qualifications or skills need confirmation before you rely on the assessment."));
+  unverified.forEach(item => {
+    const article = jobEl("article", "skill-finding");
+    article.appendChild(jobEl("strong", "gap-text", item.requirement));
+    article.appendChild(jobEl("p", "gap-why", item.why || "The current evidence does not establish this required skill or qualification."));
+    article.appendChild(renderEvidence(item));
+    const controls = renderClarificationControls(job, item);
+    if (controls) article.appendChild(controls);
+    card.appendChild(article);
+  });
+  return card;
+}
+
+function renderBlockers(fit, job = { requirements: [] }) {
   const blockers = fitGaps(fit).filter(g => g.severity === "blocker");
   if (fit && fit.placement) fit.placement.checks.filter(check => check.status === "blocker").forEach(check => blockers.push({
     area: check.label, text: check.message, severity: "blocker", status: "confirmed_gap",
     jobQuote: check.jobQuote, placementRequirement: placementRequirement(check, fit.placement.profile),
+  }));
+  essentialFindings(job, fit).confirmed.forEach(item => blockers.push({
+    ...item, area: "Required skill or qualification", text: item.requirement,
+    severity: "blocker", status: "confirmed_gap",
   }));
   if (!blockers.length) return null;
   const card = jobEl("section", "gap-card blockers-card");
@@ -1330,9 +1360,11 @@ function renderJobViewInto(root, job, fit) {
     return;
   }
   if (fit) {
-    const blockers = renderBlockers(fit);
-    if (blockers) root.appendChild(blockers);
     root.appendChild(renderFitHero(job, fit));
+    const blockers = renderBlockers(fit, job);
+    if (blockers) root.appendChild(blockers);
+    const essential = renderEssentialRequirements(job, fit);
+    if (essential) root.appendChild(essential);
     const placement = renderPlacementSuitability(fit);
     if (placement) root.appendChild(placement);
   }

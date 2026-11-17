@@ -139,7 +139,7 @@ test('follow-up answers receive saved clarifications for the same posting', asyn
 test('popup invalidates old evidence sessions and sessions changed in another panel', async () => {
   const h = harness([clarifiedFit]);
   const result = await h.context.handleClarifyFit({ job, context: extracted, ...note });
-  h.local.summaSessions = { 'tab-1': { responseLanguageVersion: 2, extracted, sourceUrl: url, fit: { ...result.fit, evidenceVersion: undefined } } };
+  h.local.summaSessions = { 'tab-1': { responseLanguageVersion: 3, extracted, sourceUrl: url, fit: { ...result.fit, evidenceVersion: undefined } } };
   const popup = loadPopup(h);
   assert.equal(await popup.restoreSession(1), false);
   h.local.summaSessions['tab-1'].fit = { ...result.fit, clarificationRevision: 0 };
