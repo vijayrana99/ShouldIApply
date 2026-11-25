@@ -76,13 +76,10 @@ function assertSourcePolicy(request, source = nepali) {
 }
 
 function loadPopup(h) {
-  h.context.document = {
-    getElementById() { return { dataset: {}, innerHTML: '', hidden: true, appendChild() {} }; },
-    createElement() { return { setAttribute() {}, remove() {}, textContent: '' }; },
-  };
+  h.context.document = { getElementById() { return { dataset: {}, innerHTML: '', hidden: true }; } };
   // Only skip browser bootstrapping; test the production session functions.
   const source = readFileSync(join(root, 'popup.js'), 'utf8').replace(/\ninit\(\);\s*$/, '\n');
-  const popup = vm.createContext({ chrome: h.chrome, document: h.context.document, console, setInterval() { return 1; }, clearInterval() {} });
+  const popup = vm.createContext({ chrome: h.chrome, document: h.context.document, console });
   vm.runInContext(readFileSync(join(root, 'placement.js'), 'utf8'), popup);
   vm.runInContext(source, popup);
   return popup;

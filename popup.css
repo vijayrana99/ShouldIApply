@@ -534,10 +534,3 @@ body.embedded { border-radius: 12px; }
 .placement-status.clarify { background: var(--surface-container); }
 
 .essential-card { border: 1px solid var(--tertiary); background: var(--tertiary-fixed-soft); }
-
-
-/* Elapsed waiting time, independent of any estimated completion time. */
-.wait-indicator { display: inline-flex; align-items: center; gap: 6px; margin: 4px 0 0 8px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--on-surface-variant); }
-.wait-indicator::before { content: ""; width: 10px; height: 10px; border: 2px solid var(--outline-variant); border-top-color: var(--primary); border-radius: 50%; animation: wait-spin 0.9s linear infinite; }
-@keyframes wait-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .wait-indicator::before { animation: none; } }

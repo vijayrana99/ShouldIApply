@@ -34,7 +34,7 @@ test('save and reassess reaches the registered worker route and persists the res
   const h = harness([fit]);
   connectWorker(h);
   const popup = preparePopup(h);
-  const feedback = { appendChild() {} };
+  const feedback = {};
   assert.equal(await popup.updateFitClarification(job.requirements[0].text, 'has_experience', 'Built JavaScript apps for two years.', feedback), true);
   assert.equal(h.requests.length, 1);
   assert.equal(h.local.summaFitClarifications[url].items[0].detail, 'Built JavaScript apps for two years.');
@@ -47,7 +47,7 @@ test('an old worker gives an inline reload instruction instead of a silent no-op
   const calls = [];
   h.chrome.runtime.sendMessage = async request => { calls.push(request); return undefined; };
   const popup = preparePopup(h);
-  const feedback = { hidden: true, appendChild() {} };
+  const feedback = { hidden: true };
   assert.equal(await popup.updateFitClarification(job.requirements[0].text, 'has_experience', 'Keep this draft.', feedback), false);
   assert.equal(calls.length, 1);
   assert.match(feedback.textContent, /Reload ShouldIApply in chrome:\/\/extensions/);
@@ -60,7 +60,7 @@ test('a disconnected extension gives reload instructions and releases the action
   const h = harness();
   h.chrome.runtime.sendMessage = async () => { throw new Error('Could not establish connection. Receiving end does not exist.'); };
   const popup = preparePopup(h);
-  const feedback = { appendChild() {} };
+  const feedback = {};
   assert.equal(await popup.updateFitClarification(job.requirements[0].text, 'has_experience', 'My experience', feedback), false);
   assert.match(feedback.textContent, /Reload ShouldIApply/);
   assert.equal(vm.runInContext('fitUpdateInFlight', popup), false);
@@ -72,7 +72,7 @@ test('API errors appear beside the form and controls allow retrying', async () =
     ? { ok: true, clarifyFit: true, evidenceVersion: 2 }
     : { ok: false, error: 'RATE_LIMITED', message: 'OpenRouter rate limit reached. Try again shortly.' };
   const popup = preparePopup(h);
-  const feedback = { appendChild() {} };
+  const feedback = {};
   assert.equal(await popup.updateFitClarification(job.requirements[0].text, 'has_experience', 'My experience', feedback), false);
   assert.match(feedback.textContent, /rate limit/);
   assert.equal(popup.controls[0].disabled, false);
