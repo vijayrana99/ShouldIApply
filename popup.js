@@ -373,8 +373,8 @@ function addMessage(role, content) {
     div.appendChild(body);
   }
   els.chatLog.appendChild(div);
-  // Keep the new message in view within the analysis scroller.
-  div.scrollIntoView({ block: "nearest" });
+  // Keep the end of the conversation and its composer in view together.
+  els.chatForm.scrollIntoView({ block: "nearest" });
 }
 
 function setChatBusy(busy) {
@@ -400,7 +400,7 @@ async function renderChips() {
 
 function openChat() {
   if (els.result.hidden) return;
-  els.chatDrawer.scrollIntoView({ block: "start", behavior: "smooth" });
+  els.chatForm.scrollIntoView({ block: "end", behavior: "smooth" });
   els.chatInput.focus({ preventScroll: true });
 }
 
