@@ -314,8 +314,45 @@ function renderMarkdown(content) {
 // ---------------------------------------------------------------------------
 // Status + chat helpers
 // ---------------------------------------------------------------------------
-function setStatus(text) { els.status.hidden = !text; els.status.textContent = text || ""; }
-function setChatStatus(text) { els.chatStatus.hidden = !text; els.chatStatus.textContent = text || ""; }
+const waitTimers = new WeakMap();
+
+function stopWaitTimer(element) {
+  const timer = waitTimers.get(element);
+  if (!timer) return;
+  clearInterval(timer.interval);
+  timer.indicator.remove();
+  waitTimers.delete(element);
+}
+
+function startWaitTimer(element) {
+  stopWaitTimer(element);
+  const startedAt = Date.now();
+  const indicator = document.createElement("span");
+  indicator.className = "wait-indicator";
+  // Keep ticking seconds out of the live announcement of the status message.
+  indicator.setAttribute("aria-hidden", "true");
+  const update = () => {
+    const seconds = Math.floor((Date.now() - startedAt) / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remaining = String(seconds % 60).padStart(2, "0");
+    indicator.textContent = minutes + ":" + remaining + " elapsed" + (seconds >= 30 ? " · Still working…" : "");
+  };
+  update();
+  element.appendChild(indicator);
+  const interval = setInterval(update, 1000);
+  waitTimers.set(element, { interval, indicator });
+}
+
+function setStatus(text) {
+  stopWaitTimer(els.status);
+  els.status.hidden = !text;
+  els.status.textContent = text || "";
+}
+function setChatStatus(text) {
+  stopWaitTimer(els.chatStatus);
+  els.chatStatus.hidden = !text;
+  els.chatStatus.textContent = text || "";
+}
 
 function addMessage(role, content) {
   const div = document.createElement("div");
@@ -798,7 +835,9 @@ async function updateFitClarification(requirement, status, detail = "", feedback
       return false;
     }
     workerReady = true;
-    report("Reassessing with your clarification… This may take up to a minute.");
+    report("Reassessing with your clarification…");
+    startWaitTimer(els.status);
+    if (feedback) startWaitTimer(feedback);
     const res = await chrome.runtime.sendMessage({ action: "clarifyFit", job, context: extracted, requirement, status, detail });
     if (!res || !res.ok) {
       handleError(res);
@@ -822,6 +861,8 @@ async function updateFitClarification(requirement, status, detail = "", feedback
     report(!workerReady || disconnected ? reloadMessage : "Could not update the assessment. Your text is still here; please try again.");
     return false;
   } finally {
+    stopWaitTimer(els.status);
+    if (feedback) stopWaitTimer(feedback);
     fitUpdateInFlight = false;
     controls.forEach(control => { control.disabled = false; });
   }
@@ -1402,15 +1443,21 @@ async function loadAnalysis() {
   if (!currentJob || analyzing || currentAnalysis) return;
   analyzing = true;
   setStatus("Analyzing missing data…");
-  const res = await chrome.runtime.sendMessage({ action: "missingDataAnalysis", job: currentJob, context: extracted });
-  analyzing = false;
-  if (res && res.ok && res.data) {
-    currentAnalysis = res.data;
-    await saveSession();
-    reRenderDetails();
+  startWaitTimer(els.status);
+  try {
+    const res = await chrome.runtime.sendMessage({ action: "missingDataAnalysis", job: currentJob, context: extracted });
+    if (res && res.ok && res.data) {
+      currentAnalysis = res.data;
+      await saveSession();
+      reRenderDetails();
+    }
+    setStatus("");
+  } catch (error) {
+    setStatus("Could not complete the analysis. Please try again.");
+  } finally {
+    stopWaitTimer(els.status);
+    analyzing = false;
   }
-  // On failure the client-side default questions still drive the checklist.
-  setStatus("");
 }
 
 async function summarize() {
@@ -1418,8 +1465,17 @@ async function summarize() {
   if (currentTabId == null) { showTabClosedNotice(); return; }
   els.summarizeBtn.disabled = true;
   setStatus("Checking if this job is right for you…");
-  const res = await chrome.runtime.sendMessage({ action: "extractJob", tabId: currentTabId });
-  els.summarizeBtn.disabled = false;
+  startWaitTimer(els.status);
+  let res;
+  try {
+    res = await chrome.runtime.sendMessage({ action: "extractJob", tabId: currentTabId });
+  } catch (error) {
+    setStatus("Could not complete the assessment. Please try again.");
+    return;
+  } finally {
+    stopWaitTimer(els.status);
+    els.summarizeBtn.disabled = false;
+  }
 
   if (res && res.ok) {
     extracted = res.extracted;
@@ -1488,7 +1544,8 @@ async function askChat(question) {
   setChatBusy(true);
   els.chatInput.value = "";
   addMessage("user", q);
-  setChatStatus("Thinking…");
+  setChatStatus("Writing your answer…");
+  startWaitTimer(els.chatStatus);
   try {
     const res = await chrome.runtime.sendMessage({ action: "chat", context: extracted, sourceUrl: currentJob && currentJob.sourceUrl, history, question: q });
     if (res && res.ok) {
@@ -1505,6 +1562,7 @@ async function askChat(question) {
   } catch (error) {
     setChatStatus("Could not send your question. Please try again.");
   } finally {
+    stopWaitTimer(els.chatStatus);
     chatInFlight = false;
     setChatBusy(false);
   }
