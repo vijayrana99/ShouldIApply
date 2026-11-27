@@ -362,10 +362,13 @@ function addMessage(role, content) {
   label.textContent = role === "user" ? "You" : "ShouldIApply";
   div.appendChild(label);
   if (role === "assistant") {
-    div.appendChild(renderMarkdown(content));
+    const body = renderMarkdown(content);
+    body.dir = "auto";
+    div.appendChild(body);
   } else {
     const body = document.createElement("span");
     body.className = "plain-text";
+    body.dir = "auto";
     body.textContent = content;
     div.appendChild(body);
   }
