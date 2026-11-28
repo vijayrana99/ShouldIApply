@@ -70,17 +70,17 @@ const CLARIFICATIONS_KEY = "summaFitClarifications";
 const LEGACY_SESSION_KEY = "summaSession";
 
 const DEFAULT_CHIPS = [
-  { label: "What are the gaps against my CV?", question: "What are the gaps between my CV and this job posting?" },
-  { label: "Placement length and start/end dates?", question: "How long is this placement, and what are its start and end dates? Clearly state which details are not specified in the posting." },
-  { label: "What skills or qualifications are required?", question: "What skills or qualifications are required?" },
-  { label: "What are the main responsibilities?", question: "What are the main responsibilities?" },
-  { label: "What benefits or perks are offered?", question: "What benefits or perks are offered?" },
-  { label: "What are the key takeaways?", question: "What are the 3–5 most important key takeaways from this content?" },
-  { label: "Summarize this in one paragraph", question: "Summarize the entire content in a single concise paragraph." },
-  { label: "What are the pros and cons?", question: "What are the main pros and cons discussed in this content?" },
-  { label: "What's missing or unclear?", question: "What important information is missing or unclear in this content?" },
+  { label: "Gaps against my CV", question: "What are the gaps between my CV and this job posting?" },
+  { label: "Placement length & dates", question: "How long is this placement, and what are its start and end dates? Clearly state which details are not specified in the posting." },
+  { label: "Skills & qualifications", question: "What skills or qualifications are required?" },
+  { label: "Responsibilities", question: "What are the main responsibilities?" },
+  { label: "Benefits & perks", question: "What benefits or perks are offered?" },
+  { label: "Key takeaways", question: "What are the 3–5 most important key takeaways from this content?" },
+  { label: "Quick summary", question: "Summarize the entire content in a single concise paragraph." },
+  { label: "Pros & cons", question: "What are the main pros and cons discussed in this content?" },
+  { label: "Missing details", question: "What important information is missing or unclear in this content?" },
 ];
-const CV_CHIP = { label: "Is this a good fit for my CV?", question: "Is this a good fit for my CV? What am I missing?" };
+const CV_CHIP = { label: "CV fit", question: "Is this a good fit for my CV? What am I missing?" };
 
 // ---------------------------------------------------------------------------
 // Inline SVG icons (self-contained, no font file / network). Icons are static
