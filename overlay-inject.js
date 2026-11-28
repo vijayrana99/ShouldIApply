@@ -30,10 +30,10 @@
       right: 20px;
       width: 600px;
       height: 860px;
-      min-width: 320px;
-      min-height: 400px;
-      max-width: 90vw;
-      max-height: 90vh;
+      min-width: min(320px, calc(100vw - 24px));
+      min-height: min(400px, calc(100vh - 24px));
+      max-width: calc(100vw - 24px);
+      max-height: calc(100vh - 24px);
       background: #ffffff;
       border-radius: 14px;
       box-shadow: 0 20px 45px -12px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(15, 23, 42, 0.08);
@@ -69,7 +69,16 @@
       cursor: pointer; line-height: 1; padding: 4px 8px; border-radius: 6px;
     }
     .header .ctrl:hover { background: #e2e8f0; color: #334155; }
-    iframe { flex: 1 1 auto; border: none; width: 100%; background: #fff; }
+    iframe { flex: 1 1 0; min-height: 0; border: none; width: 100%; background: #fff; }
+    .height-resizer {
+      flex: 0 0 14px; width: 100%; height: 14px; padding: 0;
+      border: 0; background: #f8fafc; cursor: ns-resize; touch-action: none;
+    }
+    .height-resizer::after {
+      content: ""; display: block; width: 40px; height: 3px;
+      margin: auto; border-radius: 3px; background: #94a3b8;
+    }
+    .height-resizer:focus-visible { outline: 2px solid #4f46e5; outline-offset: -2px; }
   `;
 
   const panel = document.createElement("div");
@@ -81,6 +90,7 @@
         <span class="title">ShouldIApply</span>
       </div>
       <div class="controls">
+        <button class="ctrl" data-action="expand-height" title="Expand height" aria-label="Expand height" aria-pressed="false">↕</button>
         <button class="ctrl" data-action="minimize" title="Minimize">—</button>
         <button class="ctrl" data-action="close" title="Close">✕</button>
       </div>
@@ -90,12 +100,73 @@
   const iframe = document.createElement("iframe");
   iframe.src = chrome.runtime.getURL(`popup.html?tabId=${tabId}`);
   panel.appendChild(iframe);
+  const heightResizer = document.createElement("button");
+  heightResizer.className = "height-resizer";
+  heightResizer.type = "button";
+  heightResizer.title = "Drag to resize height, or use the up/down arrow keys";
+  heightResizer.setAttribute("aria-label", "Resize panel height");
+  panel.appendChild(heightResizer);
 
   shadow.appendChild(style);
   shadow.appendChild(panel);
 
   // --- Close button ---
   panel.querySelector('.ctrl[data-action="close"]').addEventListener("click", () => host.remove());
+
+  // --- Expand vertically / restore the previous height ---
+  const expandHeight = panel.querySelector('[data-action="expand-height"]');
+  let previousHeight = null;
+  function resetExpandButton() {
+    previousHeight = null;
+    expandHeight.title = "Expand height";
+    expandHeight.setAttribute("aria-label", "Expand height");
+    expandHeight.setAttribute("aria-pressed", "false");
+  }
+  expandHeight.addEventListener("click", () => {
+    if (previousHeight) {
+      panel.style.top = previousHeight.top;
+      panel.style.height = previousHeight.height;
+      resetExpandButton();
+    } else {
+      previousHeight = { top: panel.style.top, height: panel.style.height };
+      panel.style.top = "12px";
+      panel.style.height = "calc(100vh - 24px)";
+      expandHeight.title = "Restore height";
+      expandHeight.setAttribute("aria-label", "Restore height");
+      expandHeight.setAttribute("aria-pressed", "true");
+    }
+  });
+
+  // The dedicated grip remains outside the iframe so it always receives input.
+  function setPanelHeight(height) {
+    const available = Math.max(0, window.innerHeight - panel.getBoundingClientRect().top - 12);
+    panel.style.height = `${Math.min(available, Math.max(Math.min(400, available), height))}px`;
+    resetExpandButton();
+  }
+  let resizeStart = null;
+  heightResizer.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    resizeStart = { y: event.clientY, height: panel.getBoundingClientRect().height };
+    heightResizer.setPointerCapture(event.pointerId);
+    iframe.style.pointerEvents = "none";
+  });
+  heightResizer.addEventListener("pointermove", (event) => {
+    if (resizeStart) setPanelHeight(resizeStart.height + event.clientY - resizeStart.y);
+  });
+  function finishHeightResize() {
+    resizeStart = null;
+    iframe.style.pointerEvents = "auto";
+  }
+  heightResizer.addEventListener("pointerup", finishHeightResize);
+  heightResizer.addEventListener("pointercancel", finishHeightResize);
+  heightResizer.addEventListener("lostpointercapture", finishHeightResize);
+  heightResizer.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const delta = (event.shiftKey ? 50 : 20) * (event.key === "ArrowDown" ? 1 : -1);
+    setPanelHeight(panel.getBoundingClientRect().height + delta);
+  });
 
   // --- Drag to move ---
   const header = panel.querySelector(".header");
@@ -104,6 +175,7 @@
   let offsetY = 0;
 
   header.addEventListener("mousedown", (e) => {
+    if (e.button !== 0 || e.target.closest("button")) return;
     dragging = true;
     const rect = panel.getBoundingClientRect();
     offsetX = e.clientX - rect.left;
