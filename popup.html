@@ -102,10 +102,6 @@
       <div id="job-view" class="job-view" hidden></div>
       <section id="chat-drawer" class="followup-card" aria-labelledby="followup-title">
         <h2 id="followup-title">Ask a follow-up</h2>
-        <details class="suggested-questions" open>
-          <summary>Suggested questions</summary>
-          <div class="chips" id="chips" role="group" aria-label="Suggested questions. Scroll horizontally for more."></div>
-        </details>
         <div class="chat-log" id="chat-log" aria-live="polite"></div>
         <p id="chat-status" class="status" role="status" aria-live="polite" hidden></p>
         <form id="chat-form" class="chat-input-row">
@@ -113,6 +109,14 @@
           <input id="chat-input" type="text" placeholder="Ask about the role or your CV…" autocomplete="off" required />
           <button type="submit" id="chat-send" class="send">Send</button>
         </form>
+        <details class="suggested-questions" open>
+          <summary>Suggested questions</summary>
+          <div class="question-navigation">
+            <button type="button" id="chips-prev" class="question-scroll" aria-label="Previous suggested questions" aria-controls="chips" disabled>‹</button>
+            <div class="chips" id="chips" role="group" aria-label="Suggested questions. Scroll horizontally for more."></div>
+            <button type="button" id="chips-next" class="question-scroll" aria-label="Next suggested questions" aria-controls="chips" disabled>›</button>
+          </div>
+        </details>
       </section>
     </section>
 

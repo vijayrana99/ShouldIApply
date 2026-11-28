@@ -10,7 +10,8 @@ importScripts("placement.js");
 // ---------------------------------------------------------------------------
 
 // ---- Tunables (§6, §7) ----
-const REQUEST_TIMEOUT_MS = 45000;
+const REQUEST_TIMEOUT_MS = 45000; // Source downloads.
+const AI_REQUEST_TIMEOUT_MS = 3 * 60 * 1000;
 const MAX_CHAT_TURNS = 10; // last N user/assistant messages kept, beyond the system message
 const MAX_CHARS = 60000; // summarize/chat source content cap
 const MAX_CV_CHARS = 20000; // CV content cap inside the system prompt
@@ -54,6 +55,8 @@ async function callOpenRouter(messages, model, apiKey, stage = "chat", attempt =
   let outcome = "error";
   let errorCode = null;
   let tokenUsage = { inputTokens: null, outputTokens: null, reasoningTokens: null, totalTokens: null };
+  // Keep MV3's worker active only while this bounded AI request is pending.
+  const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo().catch(() => {}), 25000);
   try {
     const content = await fetchWithTimeout(OPENROUTER_ENDPOINT, {
       method: "POST",
@@ -62,7 +65,7 @@ async function callOpenRouter(messages, model, apiKey, stage = "chat", attempt =
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ model, messages }),
-    }, REQUEST_TIMEOUT_MS, async response => {
+    }, AI_REQUEST_TIMEOUT_MS, async response => {
       if (!response.ok) {
         const bodyText = await response.text();
         throw classifyOpenRouterError(response.status, bodyText);
@@ -89,11 +92,12 @@ async function callOpenRouter(messages, model, apiKey, stage = "chat", attempt =
     if (error && error.name === "AbortError") {
       errorCode = "NETWORK_TIMEOUT";
       outcome = "timeout";
-      throw { code: "NETWORK_TIMEOUT", message: "The request took too long and was cancelled." };
+      throw { code: "NETWORK_TIMEOUT", message: "The AI request exceeded 3 minutes and was cancelled. Please try again." };
     }
     if (error && error.code && error.message) throw error;
     throw { code: "NETWORK_ERROR", message: "Couldn't complete the AI response. Check your connection and try again." };
   } finally {
+    clearInterval(keepAlive);
     // Metadata only: never log the API key, posting, CV, profile, or response.
     console.info("ShouldIApply AI request", { stage, attempt, model, elapsedMs: Date.now() - startedAt,
       inputCharacters, outputCharacters, ...tokenUsage, outcome, errorCode });

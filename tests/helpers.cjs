@@ -42,14 +42,14 @@ function harness(replies = [], initial = {}) {
   const local = { openrouterApiKey: 'test-key', cvText: 'I have two years of JavaScript experience.', ...initial.local };
   const session = initial.session || {};
   const chrome = {
-    runtime: { onMessage: { addListener(listener) { listeners.push(listener); } } },
+    runtime: { onMessage: { addListener(listener) { listeners.push(listener); } }, async getPlatformInfo() { return { os: "test" }; } },
     action: { onClicked: { addListener() {} } },
     storage: { local: storage(local), session: storage(session), sync: storage({ model: 'test-model' }) },
     tabs: { async get() { return { id: 1, url, title: 'Software Engineer job' }; } },
     scripting: { async executeScript() { return [{ result: extracted }]; } },
   };
   const context = vm.createContext({
-    chrome, console, setTimeout, clearTimeout, AbortController,
+    chrome, console, setTimeout, clearTimeout, setInterval, clearInterval, AbortController,
     importScripts(...paths) {
       paths.forEach(path => vm.runInContext(readFileSync(join(root, path), 'utf8'), context));
     },

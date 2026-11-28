@@ -33,7 +33,7 @@ test('request timeout stays active through the JSON body, then clears', async ()
   let triggerTimeout;
   let timerCleared = false;
   let capturedSignal;
-  h.context.setTimeout = callback => { triggerTimeout = callback; return 123; };
+  h.context.setTimeout = (callback, delay) => { assert.equal(delay, 180000); triggerTimeout = callback; return 123; };
   h.context.clearTimeout = id => { assert.equal(id, 123); timerCleared = true; };
   h.context.fetch = async (_url, options) => {
     capturedSignal = options.signal;
@@ -111,4 +111,63 @@ test('missing token usage is unavailable rather than zero', async () => {
   await h.context.callOpenRouter([], 'test-model','test-key');
   assert.equal(logs[0][1].inputTokens,null);
   assert.equal(logs[0][1].outputTokens,null);
+});
+
+
+test('slow AI headers and body can complete after 45 seconds and before three minutes', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  const h = harness();
+  let signal;
+  let sendHeaders;
+  let sendBody;
+  let bodyStarted;
+  const readingBody = new Promise(resolve => { bodyStarted = resolve; });
+  let keepAliveCalls = 0;
+  h.chrome.runtime.getPlatformInfo = async () => { keepAliveCalls++; };
+  h.context.fetch = (_url, options) => {
+    signal = options.signal;
+    return new Promise(resolve => { sendHeaders = resolve; });
+  };
+  const pending = h.context.callOpenRouter([], 'test-model', 'test-key');
+  t.mock.timers.tick(60000);
+  assert.equal(signal.aborted, false, 'A slow first byte must not trigger the old timeout');
+  assert.ok(keepAliveCalls > 0, 'Keep the worker active while awaiting headers');
+  sendHeaders({ ok: true, json: () => new Promise(resolve => { sendBody = resolve; bodyStarted(); }) });
+  await readingBody;
+  t.mock.timers.tick(80000);
+  assert.equal(signal.aborted, false, 'A response taking 2m 20s is still allowed');
+  sendBody({ choices: [{ message: { content: 'Completed answer' } }] });
+  assert.equal(await pending, 'Completed answer');
+  const completedCalls = keepAliveCalls;
+  t.mock.timers.tick(180000);
+  assert.equal(signal.aborted, false, 'Clear the deadline after completion');
+  assert.equal(keepAliveCalls, completedCalls, 'Stop keeping the worker active after completion');
+});
+
+test('an unanswered AI request is aborted at three minutes and releases its keep-alive', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  const h = harness();
+  let signal;
+  let keepAliveCalls = 0;
+  h.chrome.runtime.getPlatformInfo = async () => { keepAliveCalls++; };
+  h.context.fetch = (_url, options) => {
+    signal = options.signal;
+    return new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => {
+        const error = new Error('Aborted while waiting for headers');
+        error.name = 'AbortError';
+        reject(error);
+      });
+    });
+  };
+  const pending = h.context.callOpenRouter([], 'test-model', 'test-key');
+  const rejected = assert.rejects(pending, error => error.code === 'NETWORK_TIMEOUT' && /3 minutes/.test(error.message));
+  t.mock.timers.tick(179999);
+  assert.equal(signal.aborted, false, 'Do not cancel before three minutes');
+  t.mock.timers.tick(1);
+  await rejected;
+  assert.equal(signal.aborted, true);
+  const completedCalls = keepAliveCalls;
+  t.mock.timers.tick(60000);
+  assert.equal(keepAliveCalls, completedCalls, 'Stop keeping the worker active after timeout');
 });

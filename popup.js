@@ -33,6 +33,8 @@ const els = {
 
   chatDrawer: document.getElementById("chat-drawer"),
   chips: document.getElementById("chips"),
+  chipsPrev: document.getElementById("chips-prev"),
+  chipsNext: document.getElementById("chips-next"),
   chatLog: document.getElementById("chat-log"),
   chatForm: document.getElementById("chat-form"),
   chatInput: document.getElementById("chat-input"),
@@ -69,6 +71,7 @@ const LEGACY_SESSION_KEY = "summaSession";
 
 const DEFAULT_CHIPS = [
   { label: "What are the gaps against my CV?", question: "What are the gaps between my CV and this job posting?" },
+  { label: "Placement length and start/end dates?", question: "How long is this placement, and what are its start and end dates? Clearly state which details are not specified in the posting." },
   { label: "What skills or qualifications are required?", question: "What skills or qualifications are required?" },
   { label: "What are the main responsibilities?", question: "What are the main responsibilities?" },
   { label: "What benefits or perks are offered?", question: "What benefits or perks are offered?" },
@@ -373,8 +376,8 @@ function addMessage(role, content) {
     div.appendChild(body);
   }
   els.chatLog.appendChild(div);
-  // Keep the end of the conversation and its composer in view together.
-  els.chatForm.scrollIntoView({ block: "nearest" });
+  // Keep the latest answer, input and suggestions together at the bottom.
+  els.chatDrawer.scrollIntoView({ block: "end" });
 }
 
 function setChatBusy(busy) {
@@ -396,11 +399,37 @@ async function renderChips() {
     b.addEventListener("click", () => askChat(question));
     els.chips.appendChild(b);
   });
+  updateQuestionScrollButtons();
+}
+
+function updateQuestionScrollButtons() {
+  const max = els.chips.scrollWidth - els.chips.clientWidth;
+  els.chipsPrev.disabled = els.chips.scrollLeft <= 1;
+  els.chipsNext.disabled = els.chips.scrollLeft >= max - 1;
+}
+
+function scrollQuestions(direction) {
+  els.chips.scrollBy({
+    left: direction * Math.max(120, els.chips.clientWidth * 0.8),
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+  });
+}
+
+function scrollQuestionsWithWheel(event) {
+  // Preserve native sideways gestures, Shift+wheel and browser zoom.
+  if (event.ctrlKey || event.shiftKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+  const max = els.chips.scrollWidth - els.chips.clientWidth;
+  if (max <= 0) return;
+  const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? els.chips.clientWidth : 1;
+  const next = Math.max(0, Math.min(max, els.chips.scrollLeft + event.deltaY * unit));
+  if (next === els.chips.scrollLeft) return; // Let the analysis scroll at either end.
+  event.preventDefault();
+  els.chips.scrollLeft = next;
 }
 
 function openChat() {
   if (els.result.hidden) return;
-  els.chatForm.scrollIntoView({ block: "end", behavior: "smooth" });
+  els.chatDrawer.scrollIntoView({ block: "end", behavior: "smooth" });
   els.chatInput.focus({ preventScroll: true });
 }
 
@@ -1675,6 +1704,12 @@ function init() {
   });
   els.btnSettings.addEventListener("click", () => chrome.runtime.openOptionsPage());
   els.btnChat.addEventListener("click", openChat);
+  els.chipsPrev.addEventListener("click", () => scrollQuestions(-1));
+  els.chipsNext.addEventListener("click", () => scrollQuestions(1));
+  els.chips.addEventListener("scroll", updateQuestionScrollButtons, { passive: true });
+  els.chips.addEventListener("wheel", scrollQuestionsWithWheel, { passive: false });
+  // The panel can resize, and the suggestions can be collapsed or restored.
+  new ResizeObserver(updateQuestionScrollButtons).observe(els.chips);
 
   els.summarizeBtn.addEventListener("click", summarize);
   els.openSettings.addEventListener("click", () => chrome.runtime.openOptionsPage());
